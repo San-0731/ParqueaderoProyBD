@@ -1,0 +1,2 @@
+-- Schema principal de la base de datos del parqueadero
+-- TODO: definir tablas, relaciones y restricciones.

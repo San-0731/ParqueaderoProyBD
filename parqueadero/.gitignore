@@ -1,0 +1,19 @@
+# Compilado Java
+/target/
+
+# IDE
+/.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Maven
+/.mvn/
+
+# Docker
+*.env
