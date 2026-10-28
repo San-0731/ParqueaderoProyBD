@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "cweijan.vscode-database-client2",
+    "humao.rest-client",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "ms-azuretools.vscode-docker",
+    "usernamehw.errorlens",
+    "mikestead.dotenv",
+    "editorconfig.editorconfig"
+  ]
+}

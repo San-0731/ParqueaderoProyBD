@@ -1,19 +1,31 @@
-# Compilado Java
-/target/
-
-# IDE
-/.idea/
-*.iml
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
+# ---------- Java / Maven ----------
+target/
+*.class
 *.log
 
-# Maven
-/.mvn/
+# ---------- Node / Vite ----------
+node_modules/
+dist/
+*.local
+npm-debug.log*
 
-# Docker
-*.env
+# ---------- IDEs ----------
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# ---------- Variables de entorno ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Claude Code ----------
+CLAUDE.local.md
+
+# ---------- Sistema operativo ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
