@@ -1,2 +1,0 @@
--- Triggers y procedimientos asociados a la lógica del sistema
--- TODO: crear trigger de ingresos, salidas y auditoría.

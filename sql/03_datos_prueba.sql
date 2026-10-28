@@ -1,2 +1,0 @@
--- Datos de prueba para la aplicación
--- TODO: insertar registros iniciales para desarrollo.
