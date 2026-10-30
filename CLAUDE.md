@@ -22,9 +22,11 @@ Proyecto académico de la materia Bases de Datos.
   (.env está en .gitignore; .env.example sirve de plantilla).
 
 ## Estructura
-- database/  scripts SQL y docker-compose de MySQL
+- database/  scripts SQL (migraciones)
 - backend/   proyecto Maven (capas: config, model, dao, service, handler, util)
 - frontend/  proyecto React + Vite
+- docker-compose.yml  en la raíz (lee el .env de la raíz; se levanta con
+  docker compose up -d)
 
 ## Convenciones
 - Nombres del dominio en español (Vehiculo, Parqueo, Espacio, Pago).
@@ -36,7 +38,7 @@ Proyecto académico de la materia Bases de Datos.
 ## Comandos
 - Frontend: cd frontend && npm install && npm run dev
 - Backend: (se completará en la Fase 2)
-- Base de datos: (se completará en la Fase 1)
+- Base de datos: docker compose up -d (desde la raíz; detalles en la Fase 1)
 
 ## Forma de trabajar
 - Antes de cambios grandes, presentar un plan y esperar aprobación.
