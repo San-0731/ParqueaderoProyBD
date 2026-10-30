@@ -10,9 +10,11 @@
 
 
 -- -----------------------------------------------------------------------------
--- vw_espacios_disponibles: espacios habilitados que no tienen un parqueo activo
--- (registro con salida en NULL). Incluye el tipo de vehículo que admite cada
--- espacio, para filtrar, por ejemplo, solo espacios para motos.
+-- vw_espacios_disponibles: espacios habilitados que no tienen un registro en
+-- estado 'ACTIVO'. Ojo: habilitado significa "en servicio" (no está en
+-- mantenimiento); que esté libre u ocupado se calcula con los registros.
+-- Incluye el tipo de vehículo que admite cada espacio, para filtrar, por
+-- ejemplo, solo espacios para motos.
 -- -----------------------------------------------------------------------------
 CREATE VIEW vw_espacios_disponibles AS
 SELECT
@@ -29,12 +31,13 @@ WHERE e.habilitado = TRUE
         SELECT 1
         FROM registro_parqueo r
         WHERE r.id_espacio = e.id_espacio
-          AND r.salida IS NULL
+          AND r.estado = 'ACTIVO'
   );
 
 
 -- -----------------------------------------------------------------------------
--- vw_parqueos_activos: vehículos (de todos los tipos) que están adentro ahora.
+-- vw_parqueos_activos: vehículos (de todos los tipos) que están adentro ahora,
+-- es decir, registros en estado 'ACTIVO'.
 -- minutos_transcurridos usa NOW(), que se evalúa cada vez que se consulta la
 -- vista, no cuando se creó; por eso el valor aumenta con el tiempo.
 -- -----------------------------------------------------------------------------
@@ -56,11 +59,12 @@ JOIN vehiculo v      ON v.id_vehiculo = r.id_vehiculo
 JOIN tipo_vehiculo t ON t.id_tipo = v.id_tipo
 JOIN cliente c       ON c.id_cliente = v.id_cliente
 JOIN espacio e       ON e.id_espacio = r.id_espacio
-WHERE r.salida IS NULL;
+WHERE r.estado = 'ACTIVO';
 
 
 -- -----------------------------------------------------------------------------
--- vw_historial_parqueos: parqueos finalizados, una fila por parqueo.
+-- vw_historial_parqueos: parqueos finalizados (estado 'PAGO'), una fila por
+-- parqueo.
 -- Un parqueo puede pagarse con varios métodos (relación 1:N con pago). Para no
 -- repetir la fila ni duplicar valor_total, primero se agrupan los pagos de cada
 -- registro (subconsulta p) y los métodos y referencias se unen en un texto,
@@ -94,7 +98,7 @@ LEFT JOIN (
     JOIN metodo_pago m ON m.id_metodo = pg.id_metodo
     GROUP BY pg.id_registro
 ) AS p ON p.id_registro = r.id_registro
-WHERE r.salida IS NOT NULL;
+WHERE r.estado = 'PAGO';
 
 
 -- -----------------------------------------------------------------------------

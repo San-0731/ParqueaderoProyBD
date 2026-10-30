@@ -13,8 +13,7 @@
 -- - Todas las llaves foráneas usan ON DELETE RESTRICT ON UPDATE RESTRICT para
 --   no perder el historial de parqueos y pagos. Las llaves primarias son
 --   AUTO_INCREMENT y nunca se actualizan, así que ON UPDATE CASCADE no aportaría
---   nada; además MySQL lo prohíbe en las FK cuyas columnas alimentan una columna
---   generada STORED (ver registro_parqueo).
+--   nada.
 -- - Cada columna FK tiene un índice idx_ explícito: InnoDB exige un índice en
 --   cada FK y, si no existe, crea uno con el nombre de la FK (fk_...). Se omite
 --   cuando un UNIQUE compuesto ya empieza por esa columna.
@@ -179,55 +178,62 @@ CREATE TABLE espacio (
 
 -- -----------------------------------------------------------------------------
 -- registro_parqueo: entidad central. Se crea cuando el vehículo entra y se
--- completa cuando sale; salida en NULL significa que sigue parqueado.
--- minutos_totales y valor_total son derivados, pero se guardan a propósito
--- como foto del cobro, para que un cambio de tarifa futuro no altere cobros
--- pasados. La tarifa no se guarda aquí: se deduce de vehiculo -> tipo -> tarifa.
+-- completa cuando sale. minutos_totales y valor_total son derivados, pero se
+-- guardan a propósito como foto del cobro, para que un cambio de tarifa futuro
+-- no altere cobros pasados. La tarifa no se guarda aquí: se deduce de
+-- vehiculo -> tipo -> tarifa.
 --
--- Columnas generadas vehiculo_abierto y espacio_abierto:
--- MySQL calcula su valor en cada INSERT/UPDATE (no se pueden escribir) y, por
--- ser STORED, lo guarda en la fila. Mientras el registro está abierto valen el
--- id del vehículo o del espacio; al registrar la salida pasan a NULL. Un índice
--- UNIQUE permite varios NULL, así que los registros cerrados nunca chocan y
--- solo se comparan los abiertos. Resultado: un vehículo no puede tener dos
--- registros abiertos y un espacio no puede tener dos vehículos a la vez. Lo
--- garantiza la base de datos aunque dos operarios registren al mismo tiempo.
+-- estado indica en qué punto está el registro:
+--   'ACTIVO' -> el vehículo sigue adentro (sin salida ni cobro).
+--   'PAGO'   -> el vehículo salió y el cobro quedó registrado.
+-- Al cerrar el registro, la aplicación guarda salida, minutos_totales,
+-- valor_total y estado = 'PAGO', e inserta los pagos en la misma transacción.
 -- -----------------------------------------------------------------------------
 CREATE TABLE registro_parqueo (
-    id_registro      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    id_vehiculo      INT UNSIGNED  NOT NULL,
-    id_espacio       INT UNSIGNED  NOT NULL,
-    entrada          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    salida           DATETIME      NULL,
-    minutos_totales  INT UNSIGNED  NULL,
-    valor_total      DECIMAL(10,2) NULL,
-    vehiculo_abierto INT UNSIGNED
-        GENERATED ALWAYS AS (IF(salida IS NULL, id_vehiculo, NULL)) STORED,
-    espacio_abierto  INT UNSIGNED
-        GENERATED ALWAYS AS (IF(salida IS NULL, id_espacio, NULL)) STORED,
+    id_registro     INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    id_vehiculo     INT UNSIGNED  NOT NULL,
+    id_espacio      INT UNSIGNED  NOT NULL,
+    entrada         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    salida          DATETIME      NULL,
+    minutos_totales INT UNSIGNED  NULL,
+    valor_total     DECIMAL(10,2) NULL,
+    -- utf8mb4_bin compara distinguiendo mayúsculas: 'activo' no es válido.
+    -- Por defecto 'ACTIVO': al registrar una entrada no hace falta indicarlo.
+    estado          VARCHAR(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
+                    NOT NULL DEFAULT 'ACTIVO',
 
     CONSTRAINT pk_registro_parqueo PRIMARY KEY (id_registro),
-    -- Un vehículo solo puede tener un registro abierto.
-    CONSTRAINT uq_registro_vehiculo_abierto UNIQUE (vehiculo_abierto),
-    -- Un espacio solo puede estar ocupado por un registro abierto.
-    CONSTRAINT uq_registro_espacio_abierto UNIQUE (espacio_abierto),
+    -- Solo existen dos estados.
+    CONSTRAINT chk_registro_estado_valido CHECK (estado IN ('ACTIVO', 'PAGO')),
+    -- El estado debe coincidir con los datos del cobro: un registro ACTIVO no
+    -- tiene salida ni cobro; uno PAGO los tiene todos.
+    CONSTRAINT chk_registro_estado_coherente
+        CHECK ((estado = 'ACTIVO' AND salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL)
+            OR (estado = 'PAGO' AND salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)),
     -- La salida debe ser posterior a la entrada.
     CONSTRAINT chk_registro_salida_posterior
         CHECK (salida IS NULL OR salida > entrada),
-    -- Un registro abierto no tiene datos de cobro; uno cerrado los tiene todos.
-    CONSTRAINT chk_registro_cierre_completo
-        CHECK ((salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL)
-            OR (salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)),
+    -- Los minutos guardados deben ser exactamente los que hay entre entrada y
+    -- salida (TIMESTAMPDIFF es determinista, por eso se permite en un CHECK).
+    CONSTRAINT chk_registro_minutos_coherentes
+        CHECK (minutos_totales IS NULL OR minutos_totales = TIMESTAMPDIFF(MINUTE, entrada, salida)),
     -- Puede ser 0 (por ejemplo, un tiempo de gracia), pero nunca negativo.
     CONSTRAINT chk_registro_valor_total_no_negativo CHECK (valor_total >= 0),
+
+    -- Un vehículo no puede tener dos registros ACTIVO, ni un espacio dos
+    -- vehículos a la vez. Son índices UNIQUE funcionales: indexan el resultado
+    -- de la expresión, que vale el id si el registro está ACTIVO y NULL si está
+    -- PAGO. Un UNIQUE admite muchos NULL, así que los registros pagados nunca
+    -- chocan y solo se comparan los activos. MySQL guarda la expresión en una
+    -- columna virtual oculta: no aparece en SELECT * ni se llena en el INSERT.
+    -- Lo garantiza la base aunque dos operarios registren al mismo tiempo.
+    UNIQUE INDEX uq_registro_vehiculo_activo ((IF(estado = 'ACTIVO', id_vehiculo, NULL))),
+    UNIQUE INDEX uq_registro_espacio_activo ((IF(estado = 'ACTIVO', id_espacio, NULL))),
 
     INDEX idx_registro_entrada (entrada),  -- consultas y reportes por fecha de entrada
     INDEX idx_registro_vehiculo (id_vehiculo),
     INDEX idx_registro_espacio (id_espacio),
 
-    -- Estas dos FK no pueden ser CASCADE aunque se quisiera: id_vehiculo e
-    -- id_espacio alimentan columnas generadas STORED, y una cascada cambiaría
-    -- la fila sin recalcularlas. MySQL lo prohíbe.
     CONSTRAINT fk_registro_vehiculo FOREIGN KEY (id_vehiculo)
         REFERENCES vehiculo (id_vehiculo)
         ON DELETE RESTRICT ON UPDATE RESTRICT,

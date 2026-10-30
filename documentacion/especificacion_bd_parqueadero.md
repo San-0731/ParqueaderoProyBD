@@ -105,7 +105,7 @@ Restricciones adicionales:
 
 ### espacio
 
-Cada espacio está demarcado para un tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `salida` en NULL).
+Cada espacio está demarcado para un tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `estado` = 'ACTIVO').
 
 | Columna | Tipo | Nulo | Restricciones |
 |---|---|---|---|
@@ -121,7 +121,7 @@ Restricciones adicionales:
 
 ### registro_parqueo
 
-Entidad central. Se crea al entrar el vehículo y se completa al salir. `salida` en NULL significa que el vehículo sigue parqueado. `minutos_totales` y `valor_total` son atributos derivados que se guardan intencionalmente como foto del cobro, para que un cambio de tarifa futuro no altere cobros pasados. La tarifa NO se guarda aquí (ver "Decisiones de diseño").
+Entidad central. Se crea al entrar el vehículo (`estado` = 'ACTIVO') y se completa al salir y cobrar (`estado` = 'PAGO'). `minutos_totales` y `valor_total` son atributos derivados que se guardan intencionalmente como foto del cobro, para que un cambio de tarifa futuro no altere cobros pasados. La tarifa NO se guarda aquí (ver "Decisiones de diseño").
 
 | Columna | Tipo | Nulo | Restricciones |
 |---|---|---|---|
@@ -132,13 +132,16 @@ Entidad central. Se crea al entrar el vehículo y se completa al salir. `salida`
 | salida | DATETIME | Sí | |
 | minutos_totales | INT UNSIGNED | Sí | Derivado |
 | valor_total | DECIMAL(10,2) | Sí | Derivado; CHECK `valor_total >= 0` |
-| vehiculo_abierto | INT UNSIGNED | Sí | Columna generada STORED: `IF(salida IS NULL, id_vehiculo, NULL)`; UNIQUE (`uq_registro_vehiculo_abierto`) |
-| espacio_abierto | INT UNSIGNED | Sí | Columna generada STORED: `IF(salida IS NULL, id_espacio, NULL)`; UNIQUE (`uq_registro_espacio_abierto`) |
+| estado | VARCHAR(6), collation `utf8mb4_bin` | No | DEFAULT 'ACTIVO'. Valores: 'ACTIVO' (sigue adentro) o 'PAGO' (salió y se cobró) |
 
 Restricciones adicionales:
+- `chk_registro_estado_valido`: `estado IN ('ACTIVO', 'PAGO')` (distingue mayúsculas por la collation binaria).
+- `chk_registro_estado_coherente`: `(estado = 'ACTIVO' AND salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL) OR (estado = 'PAGO' AND salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)`.
 - `chk_registro_salida_posterior`: `salida IS NULL OR salida > entrada`.
-- `chk_registro_cierre_completo`: `(salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL) OR (salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)`.
-- Las columnas generadas `vehiculo_abierto` y `espacio_abierto` garantizan que un vehículo no tenga dos registros abiertos a la vez y que un espacio no tenga dos vehículos al mismo tiempo. Funciona porque MySQL permite varios NULL en una columna UNIQUE, así que solo se compara entre registros abiertos.
+- `chk_registro_minutos_coherentes`: `minutos_totales IS NULL OR minutos_totales = TIMESTAMPDIFF(MINUTE, entrada, salida)`.
+- `uq_registro_vehiculo_activo`: índice UNIQUE funcional sobre `IF(estado = 'ACTIVO', id_vehiculo, NULL)`. Un vehículo no puede tener dos registros ACTIVO.
+- `uq_registro_espacio_activo`: índice UNIQUE funcional sobre `IF(estado = 'ACTIVO', id_espacio, NULL)`. Un espacio no puede tener dos vehículos a la vez.
+- Los dos índices funcionan porque un UNIQUE admite varios NULL: los registros PAGO valen NULL y nunca chocan, así que solo se comparan los ACTIVO. MySQL guarda la expresión en una columna virtual oculta que no aparece en `SELECT *` ni se llena en el INSERT.
 
 ### metodo_pago
 
@@ -171,6 +174,8 @@ Un registro puede tener uno o varios pagos (relación 1:N), lo que permite pagos
 
 Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger por evento.
 
+Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de `registro_parqueo` se valida solo si cambia el vehículo o el espacio; si se mueve a otro espacio, también debe estar habilitado. Así, cerrar un registro nunca se bloquea.
+
 ## Reglas que maneja la aplicación (no van en la base de datos)
 
 - **Tarifa aplicable:** la del tipo del vehículo con el `vigente_desde` más reciente que no sea posterior a la fecha de entrada. Consulta de referencia:
@@ -184,7 +189,7 @@ Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger po
   ORDER BY t.vigente_desde DESC
   LIMIT 1;
   ```
-- **Cierre del registro:** al registrar la salida, calcular `minutos_totales` y `valor_total` con la tarifa aplicable. La regla de redondeo (hora completa o fracción) la define el negocio.
+- **Cierre del registro:** al registrar la salida, calcular `minutos_totales` y `valor_total` con la tarifa aplicable, poner `estado` = 'PAGO' e insertar los pagos, todo en una misma transacción. La regla de redondeo (hora completa o fracción) la define el negocio.
 - La suma de los pagos de un registro debe ser igual a su `valor_total`.
 - Los pagos con un método cuyo `requiere_referencia` es TRUE (PSE, Nequi, Daviplata) deben llevar `referencia`.
 
