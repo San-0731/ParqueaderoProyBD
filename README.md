@@ -33,6 +33,7 @@ automáticamente (ver `.vscode/extensions.json`).
 ├── backend/            # Proyecto Maven (config, model, dao, service, handler, util)
 ├── frontend/           # Proyecto React + Vite + Tailwind CSS
 ├── .vscode/            # Extensiones recomendadas para el equipo
+├── docker-compose.yml  # MySQL 8 (se crea en la Fase 1; usa el .env de la raíz)
 ├── .editorconfig       # Formato común: UTF-8, LF, indentación
 ├── .env.example        # Plantilla de variables de entorno
 ├── CLAUDE.md           # Reglas del proyecto
