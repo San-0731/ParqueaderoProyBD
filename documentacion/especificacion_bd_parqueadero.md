@@ -7,10 +7,12 @@ Sistema para el registro y control de los vehículos que solicitan parqueo. Debe
 ## Instrucciones para Claude Code
 
 - Motor: **MySQL 8.0.16 o superior**, InnoDB, charset `utf8mb4`.
-- Genera tres archivos en orden de ejecución:
-  - `01_schema.sql`: `CREATE DATABASE parqueadero` y todas las tablas, en orden de dependencias.
-  - `02_triggers.sql`: los triggers descritos en la sección "Reglas implementadas con triggers".
-  - `03_seed.sql`: los datos iniciales de los catálogos.
+- Los scripts son migraciones en `database/migrations/`, que Docker ejecuta en orden al crear la base:
+  - `V001__crear_tablas.sql`: todas las tablas, en orden de dependencias. No crea la base de datos: la crea Docker con `DB_NAME` del `.env`.
+  - `V002__datos_catalogo.sql`: tipos de vehículo, métodos de pago, tarifas y espacios.
+  - `V003__datos_prueba.sql`: clientes, vehículos, parqueos y pagos de prueba.
+  - `V004__vistas.sql`: las vistas de consulta.
+  - `V005__triggers.sql`: los triggers descritos en la sección "Reglas implementadas con triggers".
 - Nombra todas las restricciones de forma explícita con los prefijos `pk_`, `fk_`, `uq_`, `chk_` e `idx_`.
 - Todas las llaves foráneas usan `ON DELETE RESTRICT ON UPDATE RESTRICT`, para no perder el historial de parqueos y pagos.
 - Todas las llaves primarias son `INT UNSIGNED AUTO_INCREMENT`.
@@ -193,10 +195,22 @@ Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de
 - La suma de los pagos de un registro debe ser igual a su `valor_total`.
 - Los pagos con un método cuyo `requiere_referencia` es TRUE (PSE, Nequi, Daviplata) deben llevar `referencia`.
 
-## Datos iniciales (03_seed.sql)
+## Vistas (V004__vistas.sql)
 
+- `vw_espacios_disponibles`: espacios habilitados sin registro en estado 'ACTIVO'.
+- `vw_parqueos_activos`: registros 'ACTIVO' con placa, tipo, cliente, espacio y `minutos_transcurridos` (calculado con `NOW()` al consultar).
+- `vw_historial_parqueos`: registros 'PAGO', una fila por parqueo. Si hubo varios pagos, los métodos y las referencias se unen con ' + '.
+- `vw_ingresos_por_metodo`: cantidad de pagos y total recaudado por día (`fecha_pago`) y método.
+
+## Datos iniciales
+
+Catálogos (`V002__datos_catalogo.sql`):
 - `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión.
 - `metodo_pago`: PSE, Nequi y Daviplata con `requiere_referencia` TRUE; Efectivo con FALSE.
+- `tarifa`: dos por tipo. Las antiguas rigen desde 2025-01-01 (Moto 1.800, Bicicleta 800, Carro 4.500, Camión 8.000) y las actuales desde 2026-10-01 (Moto 2.000, Bicicleta 1.000, Carro 5.000, Camión 9.000).
+- `espacio`: 20 en 2 pisos. Piso 1: zona A (8 carros) y zona M (4 motos). Piso 2: zona B (4 carros; el 2-B-04 está deshabilitado), zona C (2 camiones) y zona K (2 bicicletas).
+
+Datos de prueba (`V003__datos_prueba.sql`): 9 marcas, 12 modelos, 10 clientes y 15 vehículos. Además, 27 registros en estado 'PAGO' (del 14-sep al 29-oct-2026, cobrados por hora o fracción) con 29 pagos que suman 505.600, y 4 registros en estado 'ACTIVO'.
 
 ## Decisiones de diseño (contexto, no modificar)
 
