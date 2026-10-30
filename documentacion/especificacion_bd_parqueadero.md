@@ -7,10 +7,12 @@ Sistema para el registro y control de los vehículos que solicitan parqueo. Debe
 ## Instrucciones para Claude Code
 
 - Motor: **MySQL 8.0.16 o superior**, InnoDB, charset `utf8mb4`.
-- Genera tres archivos en orden de ejecución:
-  - `01_schema.sql`: `CREATE DATABASE parqueadero` y todas las tablas, en orden de dependencias.
-  - `02_triggers.sql`: los triggers descritos en la sección "Reglas implementadas con triggers".
-  - `03_seed.sql`: los datos iniciales de los catálogos.
+- Los scripts son migraciones en `database/migrations/`, que Docker ejecuta en orden al crear la base:
+  - `V001__crear_tablas.sql`: todas las tablas, en orden de dependencias. No crea la base de datos: la crea Docker con `DB_NAME` del `.env`.
+  - `V002__datos_catalogo.sql`: tipos de vehículo, métodos de pago, tarifas y espacios.
+  - `V003__datos_prueba.sql`: clientes, vehículos, parqueos y pagos de prueba.
+  - `V004__vistas.sql`: las vistas de consulta.
+  - `V005__triggers.sql`: los triggers descritos en la sección "Reglas implementadas con triggers".
 - Nombra todas las restricciones de forma explícita con los prefijos `pk_`, `fk_`, `uq_`, `chk_` e `idx_`.
 - Todas las llaves foráneas usan `ON DELETE RESTRICT ON UPDATE RESTRICT`, para no perder el historial de parqueos y pagos.
 - Todas las llaves primarias son `INT UNSIGNED AUTO_INCREMENT`.
@@ -105,7 +107,7 @@ Restricciones adicionales:
 
 ### espacio
 
-Cada espacio está demarcado para un tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `salida` en NULL).
+Cada espacio está demarcado para un tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `estado` = 'ACTIVO').
 
 | Columna | Tipo | Nulo | Restricciones |
 |---|---|---|---|
@@ -121,7 +123,7 @@ Restricciones adicionales:
 
 ### registro_parqueo
 
-Entidad central. Se crea al entrar el vehículo y se completa al salir. `salida` en NULL significa que el vehículo sigue parqueado. `minutos_totales` y `valor_total` son atributos derivados que se guardan intencionalmente como foto del cobro, para que un cambio de tarifa futuro no altere cobros pasados. La tarifa NO se guarda aquí (ver "Decisiones de diseño").
+Entidad central. Se crea al entrar el vehículo (`estado` = 'ACTIVO') y se completa al salir y cobrar (`estado` = 'PAGO'). `minutos_totales` y `valor_total` son atributos derivados que se guardan intencionalmente como foto del cobro, para que un cambio de tarifa futuro no altere cobros pasados. La tarifa NO se guarda aquí (ver "Decisiones de diseño").
 
 | Columna | Tipo | Nulo | Restricciones |
 |---|---|---|---|
@@ -132,13 +134,16 @@ Entidad central. Se crea al entrar el vehículo y se completa al salir. `salida`
 | salida | DATETIME | Sí | |
 | minutos_totales | INT UNSIGNED | Sí | Derivado |
 | valor_total | DECIMAL(10,2) | Sí | Derivado; CHECK `valor_total >= 0` |
-| vehiculo_abierto | INT UNSIGNED | Sí | Columna generada STORED: `IF(salida IS NULL, id_vehiculo, NULL)`; UNIQUE (`uq_registro_vehiculo_abierto`) |
-| espacio_abierto | INT UNSIGNED | Sí | Columna generada STORED: `IF(salida IS NULL, id_espacio, NULL)`; UNIQUE (`uq_registro_espacio_abierto`) |
+| estado | VARCHAR(6), collation `utf8mb4_bin` | No | DEFAULT 'ACTIVO'. Valores: 'ACTIVO' (sigue adentro) o 'PAGO' (salió y se cobró) |
 
 Restricciones adicionales:
+- `chk_registro_estado_valido`: `estado IN ('ACTIVO', 'PAGO')` (distingue mayúsculas por la collation binaria).
+- `chk_registro_estado_coherente`: `(estado = 'ACTIVO' AND salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL) OR (estado = 'PAGO' AND salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)`.
 - `chk_registro_salida_posterior`: `salida IS NULL OR salida > entrada`.
-- `chk_registro_cierre_completo`: `(salida IS NULL AND minutos_totales IS NULL AND valor_total IS NULL) OR (salida IS NOT NULL AND minutos_totales IS NOT NULL AND valor_total IS NOT NULL)`.
-- Las columnas generadas `vehiculo_abierto` y `espacio_abierto` garantizan que un vehículo no tenga dos registros abiertos a la vez y que un espacio no tenga dos vehículos al mismo tiempo. Funciona porque MySQL permite varios NULL en una columna UNIQUE, así que solo se compara entre registros abiertos.
+- `chk_registro_minutos_coherentes`: `minutos_totales IS NULL OR minutos_totales = TIMESTAMPDIFF(MINUTE, entrada, salida)`.
+- `uq_registro_vehiculo_activo`: índice UNIQUE funcional sobre `IF(estado = 'ACTIVO', id_vehiculo, NULL)`. Un vehículo no puede tener dos registros ACTIVO.
+- `uq_registro_espacio_activo`: índice UNIQUE funcional sobre `IF(estado = 'ACTIVO', id_espacio, NULL)`. Un espacio no puede tener dos vehículos a la vez.
+- Los dos índices funcionan porque un UNIQUE admite varios NULL: los registros PAGO valen NULL y nunca chocan, así que solo se comparan los ACTIVO. MySQL guarda la expresión en una columna virtual oculta que no aparece en `SELECT *` ni se llena en el INSERT.
 
 ### metodo_pago
 
@@ -171,6 +176,8 @@ Un registro puede tener uno o varios pagos (relación 1:N), lo que permite pagos
 
 Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger por evento.
 
+Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de `registro_parqueo` se valida solo si cambia el vehículo o el espacio; si se mueve a otro espacio, también debe estar habilitado. Así, cerrar un registro nunca se bloquea.
+
 ## Reglas que maneja la aplicación (no van en la base de datos)
 
 - **Tarifa aplicable:** la del tipo del vehículo con el `vigente_desde` más reciente que no sea posterior a la fecha de entrada. Consulta de referencia:
@@ -184,14 +191,26 @@ Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger po
   ORDER BY t.vigente_desde DESC
   LIMIT 1;
   ```
-- **Cierre del registro:** al registrar la salida, calcular `minutos_totales` y `valor_total` con la tarifa aplicable. La regla de redondeo (hora completa o fracción) la define el negocio.
+- **Cierre del registro:** al registrar la salida, calcular `minutos_totales` y `valor_total` con la tarifa aplicable, poner `estado` = 'PAGO' e insertar los pagos, todo en una misma transacción. La regla de redondeo (hora completa o fracción) la define el negocio.
 - La suma de los pagos de un registro debe ser igual a su `valor_total`.
 - Los pagos con un método cuyo `requiere_referencia` es TRUE (PSE, Nequi, Daviplata) deben llevar `referencia`.
 
-## Datos iniciales (03_seed.sql)
+## Vistas (V004__vistas.sql)
 
+- `vw_espacios_disponibles`: espacios habilitados sin registro en estado 'ACTIVO'.
+- `vw_parqueos_activos`: registros 'ACTIVO' con placa, tipo, cliente, espacio y `minutos_transcurridos` (calculado con `NOW()` al consultar).
+- `vw_historial_parqueos`: registros 'PAGO', una fila por parqueo. Si hubo varios pagos, los métodos y las referencias se unen con ' + '.
+- `vw_ingresos_por_metodo`: cantidad de pagos y total recaudado por día (`fecha_pago`) y método.
+
+## Datos iniciales
+
+Catálogos (`V002__datos_catalogo.sql`):
 - `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión.
 - `metodo_pago`: PSE, Nequi y Daviplata con `requiere_referencia` TRUE; Efectivo con FALSE.
+- `tarifa`: dos por tipo. Las antiguas rigen desde 2025-01-01 (Moto 1.800, Bicicleta 800, Carro 4.500, Camión 8.000) y las actuales desde 2026-10-01 (Moto 2.000, Bicicleta 1.000, Carro 5.000, Camión 9.000).
+- `espacio`: 20 en 2 pisos. Piso 1: zona A (8 carros) y zona M (4 motos). Piso 2: zona B (4 carros; el 2-B-04 está deshabilitado), zona C (2 camiones) y zona K (2 bicicletas).
+
+Datos de prueba (`V003__datos_prueba.sql`): 9 marcas, 12 modelos, 10 clientes y 15 vehículos. Además, 27 registros en estado 'PAGO' (del 14-sep al 29-oct-2026, cobrados por hora o fracción) con 29 pagos que suman 505.600, y 4 registros en estado 'ACTIVO'.
 
 ## Decisiones de diseño (contexto, no modificar)
 
