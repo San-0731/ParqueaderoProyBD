@@ -2,7 +2,8 @@
 -- V003__datos_prueba.sql
 -- Datos de prueba para desarrollar y probar el backend y el frontend:
 -- marcas y modelos, 10 clientes, 15 vehículos, 27 parqueos finalizados con su
--- pago (del 14-sep al 29-oct-2026) y 4 parqueos activos (sin salida).
+-- pago (estado 'PAGO', del 14-sep al 29-oct-2026) y 4 parqueos activos
+-- (estado 'ACTIVO', sin salida).
 --
 -- Reglas que respetan estos datos:
 -- - Cobro por hora o fracción: horas = CEIL(minutos / 60) y
@@ -14,7 +15,8 @@
 --   y Daviplata llevan referencia; el efectivo no.
 -- - El tipo del vehículo coincide con el tipo del espacio, ningún parqueo usa
 --   el espacio deshabilitado 2-B-04 y no hay horarios que se crucen para el
---   mismo vehículo ni para el mismo espacio.
+--   mismo vehículo, el mismo espacio ni el mismo cliente (una persona no tiene
+--   dos de sus vehículos adentro a la vez).
 --
 -- Como en V002, los ids se buscan por datos naturales (documento, placa,
 -- piso/zona/número, nombre). Si una búsqueda no encuentra nada devuelve NULL y
@@ -160,10 +162,10 @@ INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada, salida, minutos_totales, valor_total, estado) VALUES (
     (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'ABC12D'),
     (SELECT id_espacio FROM espacio WHERE piso = '1' AND zona = 'M' AND numero = '01'),
-    '2026-09-14 08:10:00', '2026-09-14 09:05:00', 55, 1800.00, 'PAGO');
+    '2026-09-15 08:10:00', '2026-09-15 09:05:00', 55, 1800.00, 'PAGO');
 SET @registro = LAST_INSERT_ID();
 INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
-    (@registro, @nequi, 1800.00, '2026-09-14 09:05:00', 'NEQ-0001');
+    (@registro, @nequi, 1800.00, '2026-09-15 09:05:00', 'NEQ-0001');
 
 -- P03 · BCD567 (carro) en 1-A-02 · 340 min -> 6 h x 4.500 = 27.000 · PSE
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada, salida, minutos_totales, valor_total, estado) VALUES (
@@ -408,13 +410,14 @@ INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
 
 
 -- -----------------------------------------------------------------------------
--- Parqueos activos: vehículos que siguen en el parqueadero (salida en NULL,
--- sin cobro ni pago). La entrada se calcula desde NOW() para que siempre
--- parezcan recientes, sin importar cuándo se cree la base.
+-- Parqueos activos: vehículos que siguen en el parqueadero (estado 'ACTIVO',
+-- que es el valor por defecto: sin salida, sin cobro y sin pago). La entrada
+-- se calcula desde NOW() para que siempre parezcan recientes, sin importar
+-- cuándo se cree la base. Son de cuatro clientes distintos.
 -- -----------------------------------------------------------------------------
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada) VALUES
-    -- RTX918 (carro) en 1-A-02, desde hace 2 h 30 min
-    ((SELECT id_vehiculo FROM vehiculo WHERE identificador = 'RTX918'),
+    -- MVC054 (carro) en 1-A-02, desde hace 2 h 30 min
+    ((SELECT id_vehiculo FROM vehiculo WHERE identificador = 'MVC054'),
      (SELECT id_espacio FROM espacio WHERE piso = '1' AND zona = 'A' AND numero = '02'),
      NOW() - INTERVAL 150 MINUTE),
     -- WZE620 (carro) en 2-B-02, desde hace 45 min
@@ -425,7 +428,7 @@ INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada) VALUES
     ((SELECT id_vehiculo FROM vehiculo WHERE identificador = 'XYZ78G'),
      (SELECT id_espacio FROM espacio WHERE piso = '1' AND zona = 'M' AND numero = '02'),
      NOW() - INTERVAL 95 MINUTE),
-    -- BICI0007 (bicicleta) en 2-K-02, desde hace 5 h 20 min
-    ((SELECT id_vehiculo FROM vehiculo WHERE identificador = 'BICI0007'),
+    -- WTU2024A0153 (bicicleta) en 2-K-02, desde hace 5 h 20 min
+    ((SELECT id_vehiculo FROM vehiculo WHERE identificador = 'WTU2024A0153'),
      (SELECT id_espacio FROM espacio WHERE piso = '2' AND zona = 'K' AND numero = '02'),
      NOW() - INTERVAL 320 MINUTE);
