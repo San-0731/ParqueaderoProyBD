@@ -148,6 +148,7 @@ Catálogo de formas de pago.
 |---|---|---|---|
 | id_metodo | INT UNSIGNED | No | PK, AUTO_INCREMENT |
 | nombre | VARCHAR(20) | No | UNIQUE (`uq_metodo_pago_nombre`) |
+| requiere_referencia | BOOLEAN | No | Sin DEFAULT. Indica si el método exige `pago.referencia` |
 
 ### pago
 
@@ -185,12 +186,12 @@ Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger po
   ```
 - **Cierre del registro:** al registrar la salida, calcular `minutos_totales` y `valor_total` con la tarifa aplicable. La regla de redondeo (hora completa o fracción) la define el negocio.
 - La suma de los pagos de un registro debe ser igual a su `valor_total`.
-- Los pagos por PSE, Nequi o Daviplata deben llevar `referencia`.
+- Los pagos con un método cuyo `requiere_referencia` es TRUE (PSE, Nequi, Daviplata) deben llevar `referencia`.
 
 ## Datos iniciales (03_seed.sql)
 
 - `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión.
-- `metodo_pago`: PSE, Nequi, Daviplata, Efectivo.
+- `metodo_pago`: PSE, Nequi y Daviplata con `requiere_referencia` TRUE; Efectivo con FALSE.
 
 ## Decisiones de diseño (contexto, no modificar)
 

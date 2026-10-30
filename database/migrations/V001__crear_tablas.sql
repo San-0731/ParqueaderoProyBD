@@ -239,10 +239,14 @@ CREATE TABLE registro_parqueo (
 
 -- -----------------------------------------------------------------------------
 -- metodo_pago: catálogo de formas de pago (PSE, Nequi, Daviplata, Efectivo).
+-- requiere_referencia indica si el método exige un código de transacción
+-- (pago.referencia). Esa regla la valida la aplicación al registrar el pago.
+-- No tiene DEFAULT para obligar a indicarlo al crear cada método.
 -- -----------------------------------------------------------------------------
 CREATE TABLE metodo_pago (
-    id_metodo INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    nombre    VARCHAR(20)  NOT NULL,
+    id_metodo           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre              VARCHAR(20)  NOT NULL,
+    requiere_referencia BOOLEAN      NOT NULL,
 
     CONSTRAINT pk_metodo_pago PRIMARY KEY (id_metodo),
     CONSTRAINT uq_metodo_pago_nombre UNIQUE (nombre)
