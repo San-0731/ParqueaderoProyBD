@@ -17,12 +17,14 @@ import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.EspacioHandler;
 import com.parqueadero.handler.RegistroHandler;
+import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.VehiculoHandler;
 import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.EspacioService;
 import com.parqueadero.service.RegistroService;
+import com.parqueadero.service.SalidaService;
 import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
@@ -97,8 +99,11 @@ public class Main {
                 new ClienteService(conexionBD, new ClienteDAO()));
         EspacioHandler espacios = new EspacioHandler(
                 new EspacioService(conexionBD, new EspacioDAO()));
-        RegistroHandler registros = new RegistroHandler(new RegistroService(conexionBD,
-                new VehiculoDAO(), new RegistroDAO(), new PagoDAO()));
+        RegistroService registroService = new RegistroService(conexionBD,
+                new VehiculoDAO(), new RegistroDAO(), new PagoDAO());
+        RegistroHandler registros = new RegistroHandler(registroService);
+        SalidaHandler salidas = new SalidaHandler(new SalidaService(conexionBD, new RegistroDAO(),
+                new TarifaDAO(), new MetodoPagoDAO(), new PagoDAO(), registroService));
 
         return new Router()
                 .get("/api/salud", salud::consultar)
@@ -128,6 +133,8 @@ public class Main {
                 .post("/api/registros/entrada", registros::registrarEntrada)
                 .get("/api/registros/activos", registros::activos)
                 .get("/api/registros", registros::historial)
-                .get("/api/registros/{id}", registros::buscarPorId);
+                .get("/api/registros/{id}", registros::buscarPorId)
+                .get("/api/registros/{id}/liquidacion", salidas::liquidar)
+                .post("/api/registros/{id}/salida", salidas::registrarSalida);
     }
 }
