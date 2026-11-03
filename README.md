@@ -18,7 +18,7 @@ Proyecto académico de la materia **Bases de Datos**.
 
 - [Java 21](https://adoptium.net/) (JDK)
 - [Maven](https://maven.apache.org/) 3.9 o superior
-- [Node.js 24](https://nodejs.org/) (incluye npm)
+- [Node.js](https://nodejs.org/) 24.15 o superior (incluye npm)
 - [Docker](https://www.docker.com/) con Docker Compose
 
 Extensiones de VS Code recomendadas: al abrir el proyecto, VS Code las sugiere
@@ -114,4 +114,26 @@ petición indica el resultado esperado.
 
 ### 4. Frontend
 
-> ⚠️ **Pendiente.** Esta sección se completará en la fase del frontend.
+Hecho con React + Vite + Tailwind CSS v4. La primera vez, desde `frontend/`, se
+crea el archivo de variables de entorno y se instalan las dependencias:
+
+```bash
+cd frontend
+cp .env.example .env.local   # VITE_API_URL=http://localhost:8080/api
+npm install
+```
+
+`.env.local` no se sube al repositorio: cada integrante crea el suyo.
+
+| Comando             | Para qué sirve                                                  |
+|---------------------|-----------------------------------------------------------------|
+| `npm run dev`       | Servidor de desarrollo en http://localhost:5173 (recarga en caliente) |
+| `npm test -- --run` | Ejecuta las pruebas una vez (Vitest + Testing Library)          |
+| `npm test`          | Ejecuta las pruebas en modo observador (se repiten al guardar)  |
+| `npm run build`     | Compila la versión de producción en `frontend/dist/`            |
+| `npm run preview`   | Sirve localmente la versión compilada                           |
+| `npm run lint`      | Revisa la calidad del código con ESLint                         |
+| `npm run format`    | Formatea el código con Prettier (y ordena las clases de Tailwind) |
+
+Para que el frontend pueda llamar a la API, el backend debe estar encendido y
+su `CORS_ORIGIN` (en el `.env` de la raíz) debe ser `http://localhost:5173`.

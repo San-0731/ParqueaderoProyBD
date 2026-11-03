@@ -37,7 +37,10 @@ Proyecto académico de la materia Bases de Datos.
 - Ramas: feature/<descripcion> o fix/<descripcion>, creadas desde develop.
 
 ## Comandos
-- Frontend: cd frontend && npm install && npm run dev
+- Frontend (desde frontend/; la primera vez: cp .env.example .env.local):
+  npm install, npm run dev (http://localhost:5173), npm test -- --run
+  (pruebas Vitest), npm run build, npm run lint (ESLint) y npm run format
+  (Prettier)
 - Backend: cd backend && mvn clean package (compila y corre las pruebas JUnit)
   y java -jar target/parqueadero-backend.jar (requiere MySQL encendido;
   responde en http://localhost:8080/api; salud en /api/salud)
