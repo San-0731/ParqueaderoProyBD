@@ -12,8 +12,9 @@
 # Los errores siempre llegan como { "error": "CODIGO", "mensaje": "..." }.
 #
 # ⚠️ Los POST de "Crear vehículo" y "Crear cliente" guardan XYZ987 y el cliente
-# 1000000001 en la base de forma permanente (no hay DELETE). Para volver a los
-# datos iniciales, desde la raíz:
+# 1000000001 en la base de forma permanente (no hay DELETE). La "Entrada
+# exitosa" deja a KLM234 parqueado (ACTIVO) en el espacio 3 hasta que se
+# registre su salida. Para volver a los datos iniciales, desde la raíz:
 #   docker compose down -v && docker compose up -d
 # =============================================================================
 
@@ -527,3 +528,135 @@ Content-Type: application/json
 ### Borrar no está permitido
 # Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
 DELETE {{base}}/espacios/1
+
+###
+# =============================================================================
+# Registros de parqueo: entrada
+# Las reglas (tipo del espacio, habilitado, ocupado, vehículo ya adentro) las
+# aplica la base de datos; la API traduce su error a 409.
+# =============================================================================
+
+### Entrada exitosa: KLM234 (Carro) en el espacio 3 (Carro, libre)
+# Esperado: 201 con "estado": "ACTIVO", "identificador": "KLM234", "pagos": []
+# y "entrada" con la hora actual de Bogotá, sin fracciones de segundo
+# (si KLM234 ya estaba adentro: 409 "El vehículo ya tiene un parqueo activo.")
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "klm-234", "idEspacio": 3 }
+
+### Tipo distinto: una moto (ABC12D) en un espacio de carro (4)
+# Esperado: 409 REGLA_NEGOCIO "El tipo del vehículo no coincide con el tipo del espacio" (trigger)
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "ABC12D", "idEspacio": 4 }
+
+### Espacio deshabilitado (16)
+# Esperado: 409 REGLA_NEGOCIO "El espacio no está habilitado" (trigger)
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 16 }
+
+### Espacio ocupado (2, lo ocupa MVC054)
+# Esperado: 409 REGLA_NEGOCIO "El espacio ya está ocupado por otro vehículo."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 2 }
+
+### Vehículo que ya está adentro (MVC054)
+# Esperado: 409 REGLA_NEGOCIO "El vehículo ya tiene un parqueo activo."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "MVC054", "idEspacio": 5 }
+
+### Vehículo no registrado
+# Esperado: 404 NO_ENCONTRADO "No existe un vehículo con la placa o código 'NOEXISTE1'. Regístralo primero."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "noexiste-1", "idEspacio": 5 }
+
+### Espacio que no existe
+# Esperado: 400 DATOS_INVALIDOS "El espacio indicado no existe."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 999 }
+
+### Faltan los dos datos
+# Esperado: 400 DATOS_INVALIDOS con los dos errores en el mismo mensaje
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ }
+
+### La entrada solo acepta POST
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: POST
+GET {{base}}/registros/entrada
+
+###
+# =============================================================================
+# Registros de parqueo: consultas
+# =============================================================================
+
+### Vehículos que están adentro ahora
+# Esperado: 200 con 5 registros con los datos de prueba (los 4 iniciales + KLM234),
+# cada uno con "minutosTranscurridos"
+GET {{base}}/registros/activos
+
+### Buscar el registro activo de KLM234 (lo usa el detalle de abajo)
+# Esperado: 200 con una lista de un elemento: [{ "idRegistro": ..., "identificador": "KLM234", ... }]
+# @name registroPrueba
+GET {{base}}/registros/activos?identificador=klm-234
+
+### Detalle del registro activo de KLM234
+# Esperado: 200 con "estado": "ACTIVO", "salida": null, "valorTotal": null, "pagos": []
+GET {{base}}/registros/{{registroPrueba.response.body.$[0].idRegistro}}
+
+### Buscar un vehículo que no está adentro
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/registros/activos?identificador=BCD567
+
+### Historial completo (solo parqueos terminados, el más reciente primero)
+# Esperado: 200 con 27 registros con los datos de prueba
+GET {{base}}/registros
+
+### Historial de octubre de 2026 (ambas fechas incluidas)
+# Esperado: 200 con 15 registros
+GET {{base}}/registros?desde=2026-10-01&hasta=2026-10-31
+
+### Historial de un vehículo
+# Esperado: 200 con los 3 parqueos terminados de KLM234
+GET {{base}}/registros?identificador=klm-234
+
+### Historial de los parqueos pagados con PSE (id 1), aunque sea en parte
+# Esperado: 200 con 6 registros
+GET {{base}}/registros?idMetodoPago=1
+
+### Detalle de un parqueo pagado con dos métodos
+# Esperado: 200 con "estado": "PAGO" y dos pagos en "pagos" (Efectivo y Nequi)
+GET {{base}}/registros/6
+
+### Rango de fechas al revés
+# Esperado: 400 DATOS_INVALIDOS "La fecha 'desde' (2026-10-31) no puede ser posterior a la fecha 'hasta' (2026-10-01)."
+GET {{base}}/registros?desde=2026-10-31&hasta=2026-10-01
+
+### Fecha con otro formato
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'desde' debe ser una fecha con formato 2026-11-03; se recibió '31-10-2026'."
+GET {{base}}/registros?desde=31-10-2026
+
+### Método de pago que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros?idMetodoPago=abc
+
+### Registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/registros/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros/abc

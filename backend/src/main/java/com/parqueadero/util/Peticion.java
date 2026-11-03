@@ -2,6 +2,8 @@ package com.parqueadero.util;
 
 import com.parqueadero.exception.DatosInvalidosException;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 /**
@@ -90,6 +92,33 @@ public record Peticion(String metodo, String ruta, Map<String, String> parametro
         }
         throw new DatosInvalidosException("El parámetro '" + nombre
                 + "' debe ser true o false; se recibió '" + valor + "'.");
+    }
+
+    /**
+     * Valor de un parámetro de la query como fecha en formato ISO
+     * ({@code 2026-11-03}).
+     *
+     * @return la fecha, o {@code null} si el parámetro no viene o está vacío
+     * @throws DatosInvalidosException si viene con otro formato o con una fecha
+     *         que no existe (por ejemplo {@code 31-10-2026} o {@code 2026-02-30})
+     */
+    public LocalDate parametroQueryComoFecha(String nombre) {
+        String valor = parametroQuery(nombre);
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        String limpio = valor.strip();
+        // LocalDate.parse también aceptaría años como +20000 o +999999999, que
+        // MySQL no maneja; se exige exactamente AAAA-MM-DD.
+        if (limpio.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            try {
+                return LocalDate.parse(limpio);
+            } catch (DateTimeParseException e) {
+                // Formato correcto pero fecha inexistente (2026-02-30): mismo mensaje.
+            }
+        }
+        throw new DatosInvalidosException("El parámetro '" + nombre
+                + "' debe ser una fecha con formato 2026-11-03; se recibió '" + valor + "'.");
     }
 
     /**
