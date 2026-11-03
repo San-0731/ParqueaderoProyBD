@@ -2,10 +2,20 @@ package com.parqueadero;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.dao.ClienteDAO;
+import com.parqueadero.dao.MarcaDAO;
+import com.parqueadero.dao.MetodoPagoDAO;
+import com.parqueadero.dao.ModeloDAO;
+import com.parqueadero.dao.TarifaDAO;
+import com.parqueadero.dao.TipoVehiculoDAO;
 import com.parqueadero.dao.VehiculoDAO;
 import com.parqueadero.handler.ApiHandler;
+import com.parqueadero.handler.CatalogoHandler;
+import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.VehiculoHandler;
+import com.parqueadero.service.CatalogoService;
+import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
@@ -73,6 +83,11 @@ public class Main {
         SaludHandler salud = new SaludHandler(conexionBD);
         VehiculoHandler vehiculos = new VehiculoHandler(
                 new VehiculoService(conexionBD, new VehiculoDAO()));
+        CatalogoHandler catalogos = new CatalogoHandler(new CatalogoService(conexionBD,
+                new TipoVehiculoDAO(), new MetodoPagoDAO(), new TarifaDAO(), new MarcaDAO(),
+                new ModeloDAO()));
+        ClienteHandler clientes = new ClienteHandler(
+                new ClienteService(conexionBD, new ClienteDAO()));
 
         return new Router()
                 .get("/api/salud", salud::consultar)
@@ -80,6 +95,17 @@ public class Main {
                 .get("/api/vehiculos", vehiculos::listar)
                 .get("/api/vehiculos/{id}", vehiculos::buscarPorId)
                 .post("/api/vehiculos", vehiculos::crear)
-                .put("/api/vehiculos/{id}", vehiculos::actualizar);
+                .put("/api/vehiculos/{id}", vehiculos::actualizar)
+
+                .get("/api/tipos-vehiculo", catalogos::tiposVehiculo)
+                .get("/api/metodos-pago", catalogos::metodosPago)
+                .get("/api/tarifas/vigente", catalogos::tarifasVigentes)
+                .get("/api/marcas", catalogos::marcas)
+                .get("/api/modelos", catalogos::modelos)
+
+                .get("/api/clientes", clientes::listar)
+                .get("/api/clientes/{id}", clientes::buscarPorId)
+                .post("/api/clientes", clientes::crear)
+                .put("/api/clientes/{id}", clientes::actualizar);
     }
 }
