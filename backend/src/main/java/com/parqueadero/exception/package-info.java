@@ -8,6 +8,9 @@
  *   <li>{@link com.parqueadero.exception.DatosInvalidosException}: 400, los datos enviados no son válidos.</li>
  *   <li>{@link com.parqueadero.exception.ReglaNegocioException}: 409, los datos son válidos pero
  *       la operación choca con una regla del negocio o con el estado actual.</li>
+ *   <li>{@link com.parqueadero.exception.RutaNoEncontradaException}: 404, no existe la ruta pedida.</li>
+ *   <li>{@link com.parqueadero.exception.MetodoNoPermitidoException}: 405, la ruta existe pero no
+ *       acepta ese método HTTP.</li>
  * </ul>
  */
 package com.parqueadero.exception;
