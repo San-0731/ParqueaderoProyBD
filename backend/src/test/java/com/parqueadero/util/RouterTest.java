@@ -230,6 +230,23 @@ class RouterTest {
     }
 
     @Test
+    void parametroQueryComoBoolean_casos() {
+        Router router = new Router().get("/api/espacios", ECO);
+        Peticion peticion = eco(router, "GET",
+                "/api/espacios?a=true&b=FALSE&c=%20True%20&vacio=&texto=si", null);
+
+        assertEquals(true, peticion.parametroQueryComoBoolean("a"));
+        assertEquals(false, peticion.parametroQueryComoBoolean("b"));
+        assertEquals(true, peticion.parametroQueryComoBoolean("c"));
+        assertNull(peticion.parametroQueryComoBoolean("noViene"));
+        assertNull(peticion.parametroQueryComoBoolean("vacio"));
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> peticion.parametroQueryComoBoolean("texto"));
+        assertEquals("El parámetro 'texto' debe ser true o false; se recibió 'si'.",
+                error.getMessage());
+    }
+
+    @Test
     void urlMalCodificadaLanzaDatosInvalidos() {
         Router router = new Router().get("/api/prueba/{texto}", ECO);
 

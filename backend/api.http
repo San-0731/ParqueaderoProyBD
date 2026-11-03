@@ -410,3 +410,120 @@ Content-Type: application/json
 ### Borrar no está permitido (no existe DELETE de clientes)
 # Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
 DELETE {{base}}/clientes/1
+
+###
+# =============================================================================
+# Espacios: consultas
+# habilitado = en servicio; ocupado = tiene un parqueo ACTIVO;
+# disponible = habilitado y libre (se puede parquear ahí ahora)
+# =============================================================================
+
+### Listar todos los espacios con su estado (por piso, zona y número)
+# Esperado: 200 con 20 espacios (datos iniciales)
+GET {{base}}/espacios
+
+### Espacios de un tipo de vehículo (1 = Moto)
+# Esperado: 200 con los 4 espacios de motos
+GET {{base}}/espacios?idTipo=1
+
+### Espacios disponibles (usa la vista vw_espacios_disponibles)
+# Esperado: 200 con 15 espacios (20 menos 4 ocupados y 1 deshabilitado)
+GET {{base}}/espacios?disponible=true
+
+### Filtros combinados: espacios disponibles para carros (3 = Carro)
+# Esperado: 200 con 9 espacios
+GET {{base}}/espacios?idTipo=3&disponible=true
+
+### Espacios NO disponibles (ocupados o deshabilitados)
+# Esperado: 200 con 5 espacios (2, 10, 14 y 20 ocupados; 16 deshabilitado)
+GET {{base}}/espacios?disponible=false
+
+### Filtro disponible con un valor que no es true ni false
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'disponible' debe ser true o false; ..."
+GET {{base}}/espacios?disponible=si
+
+### Filtro de tipo que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/espacios?idTipo=abc
+
+### Espacio ocupado
+# Esperado: 200 con "habilitado": true, "ocupado": true, "disponible": false
+GET {{base}}/espacios/2
+
+### Espacio deshabilitado (en mantenimiento)
+# Esperado: 200 con "habilitado": false, "ocupado": false, "disponible": false
+GET {{base}}/espacios/16
+
+### Espacio que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/espacios/999
+
+###
+# =============================================================================
+# Espacios: habilitar y deshabilitar
+# Cada "deshabilitar" va seguido de su "habilitar", así los datos quedan igual.
+# =============================================================================
+
+### Deshabilitar un espacio libre
+# Esperado: 200 con "habilitado": false, "disponible": false
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Comprobar que el espacio 1 ya no aparece como disponible
+# Esperado: 200 con 14 espacios (sin el 1)
+GET {{base}}/espacios?disponible=true
+
+### Volver a habilitar el espacio 1
+# Esperado: 200 con "habilitado": true, "disponible": true
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": true }
+
+### Deshabilitar un espacio ocupado (permitido: el vehículo termina su parqueo)
+# Esperado: 200 con "habilitado": false, "ocupado": true, "disponible": false
+PATCH {{base}}/espacios/2/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Volver a habilitar el espacio 2
+# Esperado: 200 con "habilitado": true, "ocupado": true
+PATCH {{base}}/espacios/2/habilitado
+Content-Type: application/json
+
+{ "habilitado": true }
+
+### Cambiar sin enviar el campo habilitado
+# Esperado: 400 DATOS_INVALIDOS "El campo habilitado es obligatorio (true o false)."
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ }
+
+### Cambiar con un texto en vez de true/false
+# Esperado: 400 DATOS_INVALIDOS "El valor 'si' no es válido; se esperaba true o false. ..."
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": "si" }
+
+### Cambiar un espacio que no existe
+# Esperado: 404 NO_ENCONTRADO
+PATCH {{base}}/espacios/999/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+PATCH {{base}}/espacios/abc/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Borrar no está permitido
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+DELETE {{base}}/espacios/1

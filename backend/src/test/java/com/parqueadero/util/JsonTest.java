@@ -158,6 +158,36 @@ class JsonTest {
         assertEquals("Se esperaba un objeto JSON.", error.getMessage());
     }
 
+    /** Forma de prueba con un booleano, como el cuerpo del PATCH de espacios. */
+    private record ConBooleano(Boolean habilitado) {
+    }
+
+    @Test
+    void desdeJson_booleanoAceptaTrueFalseYNull() {
+        assertEquals(true, Json.desdeJson("{\"habilitado\":true}", ConBooleano.class).habilitado());
+        assertEquals(false, Json.desdeJson("{\"habilitado\":false}", ConBooleano.class).habilitado());
+        assertEquals(null, Json.desdeJson("{\"habilitado\":null}", ConBooleano.class).habilitado());
+    }
+
+    @Test
+    void desdeJson_booleanoComoTextoLanzaDatosInvalidos() {
+        // Sin el adaptador estricto, Gson convertiría "si" en false sin avisar.
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> Json.desdeJson("{\"habilitado\":\"si\"}", ConBooleano.class));
+
+        assertEquals("El valor 'si' no es válido; se esperaba true o false."
+                + " Revisa el valor en $.habilitado.", error.getMessage());
+        assertThrows(DatosInvalidosException.class,
+                () -> Json.desdeJson("{\"habilitado\":\"true\"}", ConBooleano.class));
+        assertThrows(DatosInvalidosException.class,
+                () -> Json.desdeJson("{\"habilitado\":1}", ConBooleano.class));
+    }
+
+    @Test
+    void aJson_booleanoSaleComoLiteral() {
+        assertEquals("{\"habilitado\":false}", Json.aJson(new ConBooleano(false)));
+    }
+
     @Test
     void desdeJson_camposFaltantesQuedanNulos() {
         Vehiculo vehiculo = Json.desdeJson("{\"identificador\":\"ABC123\"}", Vehiculo.class);
