@@ -38,8 +38,11 @@ Proyecto académico de la materia Bases de Datos.
 
 ## Comandos
 - Frontend: cd frontend && npm install && npm run dev
-- Backend: (se completará en la Fase 2)
-- Base de datos: docker compose up -d (desde la raíz; detalles en la Fase 1)
+- Backend: cd backend && mvn clean package (compila y corre las pruebas JUnit)
+  y java -jar target/parqueadero-backend.jar (requiere MySQL encendido;
+  responde en http://localhost:8080/api; salud en /api/salud)
+- Probar la API: backend/api.http (extensión REST Client)
+- Base de datos: docker compose up -d (desde la raíz; ver documentacion/guia_docker.md)
 
 ## Forma de trabajar
 - Antes de cambios grandes, presentar un plan y esperar aprobación.
