@@ -9,3 +9,11 @@ TESTING DE SANTIAGO SANCHEZ = NO
 TESTING DE CALEB GUZMAN = NO
 
 colocar si cuando hayan hecho todos los testings
+
+No se instala dependencia para leer los archivos .env se crea una manera por nuestra cuenta propia
+
+las dependencias que si se van a instalar por el gestor maven seran 
+Dependencia	                                       Para qué
+MySQL Connector/J (com.mysql:mysql-connector-j)	   El driver JDBC para hablar con MySQL
+Gson (com.google.code.gson:gson)	               Convertir objetos Java ↔ JSON
+JUnit Jupiter (org.junit.jupiter)	               Pruebas unitarias
