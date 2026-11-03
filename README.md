@@ -64,11 +64,54 @@ main      ← versión estable / entregable
 
 ## Cómo ejecutar
 
-> ⚠️ **Pendiente.** Esta sección se completará en la Fase 1 (base de datos) y
-> en la Fase 2 (backend).
+### 1. Variables de entorno
 
 Primer paso común: copiar la plantilla de variables de entorno y ajustar los valores.
 
 ```bash
 cp .env.example .env
 ```
+
+### 2. Base de datos
+
+Desde la raíz del repositorio (la primera vez crea las tablas y carga los datos
+de prueba de `database/migrations/`):
+
+```bash
+docker compose up -d
+```
+
+Más detalles (encender y apagar Docker, volúmenes, errores comunes) en
+[`documentacion/guia_docker.md`](documentacion/guia_docker.md).
+
+### 3. Backend
+
+Con MySQL encendido:
+
+```bash
+cd backend
+mvn clean package                         # compila y ejecuta las pruebas JUnit
+java -jar target/parqueadero-backend.jar  # inicia el servidor
+```
+
+Para comprobar que funciona, en otra terminal:
+
+```bash
+curl http://localhost:8080/api/salud
+# {"estado":"OK","baseDatos":"OK"}
+```
+
+El servidor se detiene con `Ctrl+C`. Variables opcionales del `.env`:
+
+| Variable      | Por defecto             | Para qué sirve                                         |
+|---------------|-------------------------|--------------------------------------------------------|
+| `PORT`        | `8080`                  | Puerto del servidor HTTP                               |
+| `CORS_ORIGIN` | `http://localhost:5173` | Dirección del frontend que puede llamar a la API (CORS) |
+
+Para probar la API sin escribir `curl`, abre [`backend/api.http`](backend/api.http)
+con la extensión **REST Client** de VS Code y haz clic en *Send Request*: cada
+petición indica el resultado esperado.
+
+### 4. Frontend
+
+> ⚠️ **Pendiente.** Esta sección se completará en la fase del frontend.

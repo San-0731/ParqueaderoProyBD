@@ -1,0 +1,229 @@
+# =============================================================================
+# Peticiones de prueba de la API del parqueadero.
+#
+# Cómo usarlo:
+#   1. Instalar la extensión REST Client de VS Code (humao.rest-client; VS Code
+#      la sugiere al abrir el proyecto).
+#   2. Encender MySQL (docker compose up -d) y el backend
+#      (cd backend && java -jar target/parqueadero-backend.jar).
+#   3. Hacer clic en "Send Request" encima de cada petición.
+#
+# Cada petición indica en "# Esperado:" el código HTTP y lo que debe responder.
+# Los errores siempre llegan como { "error": "CODIGO", "mensaje": "..." }.
+#
+# ⚠️ El POST de "Crear vehículo" guarda XYZ987 en la base de forma permanente
+# (no hay DELETE). Para volver a los datos iniciales, desde la raíz:
+#   docker compose down -v && docker compose up -d
+# =============================================================================
+
+@base = http://localhost:8080/api
+
+
+# =============================================================================
+# General: salud, CORS y errores de ruta
+# =============================================================================
+
+### Salud del servidor y de la base de datos
+# Esperado: 200 {"estado":"OK","baseDatos":"OK"}
+# (con MySQL apagado: 503 {"estado":"OK","baseDatos":"ERROR"})
+GET {{base}}/salud
+
+### Preflight de CORS (lo que envía el navegador antes de un POST desde React)
+# Esperado: 204 sin cuerpo, con las cabeceras Access-Control-Allow-*
+OPTIONS {{base}}/vehiculos
+Origin: http://localhost:5173
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
+
+### Ruta que no existe
+# Esperado: 404 RUTA_NO_ENCONTRADA
+GET {{base}}/xyz
+
+### Método no permitido en una ruta que sí existe
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+POST {{base}}/salud
+
+###
+# =============================================================================
+# Vehículos: consultas
+# =============================================================================
+
+### Listar todos los vehículos
+# Esperado: 200 con la lista (15 vehículos con los datos de prueba iniciales)
+GET {{base}}/vehiculos
+
+### Buscar por placa: el texto se normaliza (klm-234 → KLM234)
+# Esperado: 200 con una lista de un elemento: [{ ..., "identificador": "KLM234", ... }]
+GET {{base}}/vehiculos?identificador=klm-234
+
+### Buscar una placa que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/vehiculos?identificador=noexiste
+
+### Vehículo por id
+# Esperado: 200 con el vehículo 1 (KLM234)
+GET {{base}}/vehiculos/1
+
+### Vehículo con un id que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/vehiculos/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/vehiculos/abc
+
+###
+# =============================================================================
+# Vehículos: crear
+# =============================================================================
+
+### Crear vehículo (el identificador se guarda normalizado como XYZ987)
+# Esperado: 201 con el vehículo creado y su idVehiculo
+# (si XYZ987 ya existía: 409 REGLA_NEGOCIO)
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "xyz-987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "color": "Rojo",
+  "anio": 2020
+}
+
+### Crear con una placa que ya existe
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un vehículo con la placa o código 'XYZ987'."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Crear sin los campos obligatorios
+# Esperado: 400 DATOS_INVALIDOS con los dos errores en el mismo mensaje
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111"
+}
+
+### Crear con un JSON mal formado
+# Esperado: 400 DATOS_INVALIDOS "El cuerpo de la petición no es un JSON válido. ..."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{ "identificador":
+
+### Crear con un tipo de vehículo que no existe (llave foránea)
+# Esperado: 400 DATOS_INVALIDOS "El tipo de vehículo indicado no existe."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 99,
+  "idCliente": 1
+}
+
+### Crear con un cliente que no existe (llave foránea)
+# Esperado: 400 DATOS_INVALIDOS "El cliente indicado no existe."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 3,
+  "idCliente": 999
+}
+
+### Crear con un id negativo (fuera del rango de INT UNSIGNED)
+# Esperado: 400 DATOS_INVALIDOS "El valor de 'id_tipo' está fuera del rango permitido."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": -1,
+  "idCliente": 1
+}
+
+### Crear con un año fuera de rango (CHECK de la base de datos)
+# Esperado: 400 DATOS_INVALIDOS "El año del vehículo debe estar entre 1900 y 2100."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 3,
+  "idCliente": 1,
+  "anio": 1800
+}
+
+###
+# =============================================================================
+# Vehículos: actualizar (PUT reemplaza todos los datos del vehículo)
+# =============================================================================
+
+### Buscar el vehículo de prueba XYZ987 (ejecutar ANTES de los PUT siguientes)
+# Esperado: 200 con [{ "idVehiculo": ..., "identificador": "XYZ987", ... }]
+# Los PUT usan su idVehiculo, así no hay que copiarlo a mano.
+# @name vehiculoPrueba
+GET {{base}}/vehiculos?identificador=XYZ987
+
+### Actualizar el color del vehículo de prueba
+# Esperado: 200 con el vehículo y "color": "Azul"
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "color": "Azul",
+  "anio": 2020
+}
+
+### Actualizar sin enviar el color: el campo queda en null
+# Esperado: 200 con "color": null
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "anio": 2020
+}
+
+### Cambiar la placa a una que ya tiene otro vehículo
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un vehículo con la placa o código 'KLM234'."
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "KLM234",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Actualizar un vehículo que no existe
+# Esperado: 404 NO_ENCONTRADO
+PUT {{base}}/vehiculos/999
+Content-Type: application/json
+
+{
+  "identificador": "ZZZ999",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Borrar no está permitido (no existe DELETE de vehículos)
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
+DELETE {{base}}/vehiculos/1
