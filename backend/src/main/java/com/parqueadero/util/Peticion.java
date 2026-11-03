@@ -70,6 +70,29 @@ public record Peticion(String metodo, String ruta, Map<String, String> parametro
     }
 
     /**
+     * Valor de un parámetro de la query como booleano. Solo acepta
+     * {@code true} o {@code false} (sin importar mayúsculas).
+     *
+     * @return el valor, o {@code null} si el parámetro no viene o está vacío
+     * @throws DatosInvalidosException si viene con otro valor (por ejemplo {@code si})
+     */
+    public Boolean parametroQueryComoBoolean(String nombre) {
+        String valor = parametroQuery(nombre);
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        String limpio = valor.strip();
+        if (limpio.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (limpio.equalsIgnoreCase("false")) {
+            return false;
+        }
+        throw new DatosInvalidosException("El parámetro '" + nombre
+                + "' debe ser true o false; se recibió '" + valor + "'.");
+    }
+
+    /**
      * Convierte el cuerpo JSON en un objeto del tipo indicado (ver {@link Json#desdeJson}).
      *
      * @throws DatosInvalidosException si el cuerpo está vacío o no es un JSON válido
