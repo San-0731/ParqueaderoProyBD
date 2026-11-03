@@ -4,7 +4,9 @@ import com.parqueadero.model.EstadoRegistro;
 import com.parqueadero.model.ParqueoActivo;
 import com.parqueadero.model.ParqueoHistorial;
 import com.parqueadero.model.RegistroDetalle;
+import com.parqueadero.model.RegistroParqueo;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,7 +21,8 @@ import java.util.Optional;
 /**
  * Acceso a datos de los registros de parqueo ({@code registro_parqueo}) y de
  * sus vistas ({@code vw_parqueos_activos} y {@code vw_historial_parqueos}).
- * Recibe la {@link Connection} y no la cierra.
+ * Recibe la {@link Connection} y no la cierra: así la salida puede hacer
+ * varias operaciones dentro de la misma transacción.
  */
 public final class RegistroDAO {
 
@@ -28,6 +31,20 @@ public final class RegistroDAO {
     // base (trigger de V005 e índices UNIQUE de V001).
     private static final String SQL_INSERTAR_ENTRADA =
             "INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada) VALUES (?, ?, ?)";
+
+    private static final String SQL_BUSCAR_POR_ID =
+            "SELECT id_registro, id_vehiculo, id_espacio, entrada, salida, minutos_totales,"
+                    + " valor_total, estado FROM registro_parqueo WHERE id_registro = ?";
+
+    // FOR UPDATE bloquea la fila hasta el commit o el rollback de la transacción:
+    // si otra petición intenta cerrar el mismo registro al mismo tiempo, espera
+    // aquí y, cuando continúa, ya lo ve cerrado (estado PAGO).
+    private static final String SQL_BUSCAR_POR_ID_PARA_ACTUALIZAR = SQL_BUSCAR_POR_ID + " FOR UPDATE";
+
+    // "AND estado = 'ACTIVO'": un registro ya cerrado nunca se vuelve a cerrar.
+    private static final String SQL_CERRAR =
+            "UPDATE registro_parqueo SET salida = ?, minutos_totales = ?, valor_total = ?,"
+                    + " estado = 'PAGO' WHERE id_registro = ? AND estado = 'ACTIVO'";
 
     private static final String SQL_BUSCAR_DETALLE =
             "SELECT r.id_registro, r.id_vehiculo, v.identificador, r.id_espacio,"
@@ -82,6 +99,65 @@ public final class RegistroDAO {
             }
         }
         throw new SQLException("MySQL no devolvió el id del registro insertado.");
+    }
+
+    /**
+     * Busca la fila del registro, sin bloquearla (para consultar).
+     *
+     * @return el registro, o {@code Optional.empty()} si no existe
+     */
+    public Optional<RegistroParqueo> buscarPorId(Connection conexion, long idRegistro)
+            throws SQLException {
+        return buscar(conexion, SQL_BUSCAR_POR_ID, idRegistro);
+    }
+
+    /**
+     * Busca la fila del registro y la <b>bloquea</b> ({@code SELECT ... FOR UPDATE})
+     * hasta que termine la transacción. Solo tiene efecto dentro de una
+     * transacción ({@code setAutoCommit(false)}).
+     *
+     * @return el registro, o {@code Optional.empty()} si no existe
+     */
+    public Optional<RegistroParqueo> buscarPorIdParaActualizar(Connection conexion, long idRegistro)
+            throws SQLException {
+        return buscar(conexion, SQL_BUSCAR_POR_ID_PARA_ACTUALIZAR, idRegistro);
+    }
+
+    /**
+     * Cierra un registro ACTIVO: guarda salida, minutos y valor, y lo pasa a PAGO.
+     *
+     * @return {@code true} si se cerró; {@code false} si no existe o ya estaba cerrado
+     */
+    public boolean cerrar(Connection conexion, long idRegistro, LocalDateTime salida,
+            long minutosTotales, BigDecimal valorTotal) throws SQLException {
+        try (PreparedStatement consulta = conexion.prepareStatement(SQL_CERRAR)) {
+            consulta.setObject(1, salida);
+            consulta.setLong(2, minutosTotales);
+            consulta.setBigDecimal(3, valorTotal);
+            consulta.setLong(4, idRegistro);
+            return consulta.executeUpdate() > 0;
+        }
+    }
+
+    private Optional<RegistroParqueo> buscar(Connection conexion, String sql, long idRegistro)
+            throws SQLException {
+        try (PreparedStatement consulta = conexion.prepareStatement(sql)) {
+            consulta.setLong(1, idRegistro);
+            try (ResultSet resultado = consulta.executeQuery()) {
+                if (!resultado.next()) {
+                    return Optional.empty();
+                }
+                return Optional.of(new RegistroParqueo(
+                        resultado.getLong("id_registro"),
+                        resultado.getLong("id_vehiculo"),
+                        resultado.getLong("id_espacio"),
+                        resultado.getObject("entrada", LocalDateTime.class),
+                        resultado.getObject("salida", LocalDateTime.class),       // NULL si ACTIVO
+                        resultado.getObject("minutos_totales", Long.class),       // NULL si ACTIVO
+                        resultado.getBigDecimal("valor_total"),                   // NULL si ACTIVO
+                        EstadoRegistro.valueOf(resultado.getString("estado"))));
+            }
+        }
     }
 
     /**

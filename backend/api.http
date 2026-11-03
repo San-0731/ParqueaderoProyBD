@@ -13,8 +13,9 @@
 #
 # ⚠️ Los POST de "Crear vehículo" y "Crear cliente" guardan XYZ987 y el cliente
 # 1000000001 en la base de forma permanente (no hay DELETE). La "Entrada
-# exitosa" deja a KLM234 parqueado (ACTIVO) en el espacio 3 hasta que se
-# registre su salida. Para volver a los datos iniciales, desde la raíz:
+# exitosa" deja a KLM234 parqueado (ACTIVO) en el espacio 3, y las salidas
+# exitosas cierran los registros 29 y 31 con su pago. Para volver a los datos
+# iniciales, desde la raíz:
 #   docker compose down -v && docker compose up -d
 # =============================================================================
 
@@ -660,3 +661,100 @@ GET {{base}}/registros/999
 ### Id que no es un número
 # Esperado: 400 DATOS_INVALIDOS
 GET {{base}}/registros/abc
+
+###
+# =============================================================================
+# Registros de parqueo: salida y pago
+# Cobro por hora o fracción con la tarifa vigente en la fecha de entrada
+# (0 minutos = no se cobra). Cerrar el registro y guardar el pago van en una
+# sola transacción: si algo falla, el registro sigue ACTIVO y sin pago.
+# =============================================================================
+
+### Liquidación del registro 28 (MVC054, Carro): lo que pagaría si saliera ahora
+# Esperado: 200 con "minutosTotales", "horasCobradas", "valorHora": 5000.00 y
+# "valorTotal" = horasCobradas × 5000. No guarda nada.
+GET {{base}}/registros/28/liquidacion
+
+### Liquidación de un registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/registros/999/liquidacion
+
+### Liquidación con un id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros/abc/liquidacion
+
+### Salida del registro 29 (WZE620) pagando con Nequi
+# Esperado: 200 con "estado": "PAGO", salida, minutos, valor y un pago por el
+# valor total con "idMetodo": 2 y "referencia": "NEQ-PRUEBA-001"
+# (si ya se había cerrado: 409 REGLA_NEGOCIO)
+POST {{base}}/registros/29/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 2, "referencia": "NEQ-PRUEBA-001" }
+
+### Cerrar otra vez el mismo registro
+# Esperado: 409 REGLA_NEGOCIO "El parqueo 29 ya está cerrado: la salida se registró el ..."
+POST {{base}}/registros/29/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### Liquidación de un registro ya cerrado
+# Esperado: 409 REGLA_NEGOCIO "El parqueo 29 ya está cerrado: ..."
+GET {{base}}/registros/29/liquidacion
+
+### El espacio del registro 29 (14) quedó libre
+# Esperado: 200 con "ocupado": false, "disponible": true
+GET {{base}}/espacios/14
+
+### Salida del registro 31 (bicicleta) en efectivo, sin referencia
+# Esperado: 200 con "estado": "PAGO" y un pago con "idMetodo": 4 y "referencia": null
+POST {{base}}/registros/31/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### PSE sin referencia
+# Esperado: 400 DATOS_INVALIDOS "El pago con PSE requiere la referencia (código de la transacción)."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 1 }
+
+### Referencia que ya usó otro pago (demuestra el rollback)
+# El UPDATE que cierra el registro sí se ejecuta, pero el INSERT del pago falla
+# por el UNIQUE de la referencia: el rollback deshace el UPDATE.
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un pago con la referencia 'NEQ-0001'."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 2, "referencia": "NEQ-0001" }
+
+### Método de pago que no existe
+# Esperado: 400 DATOS_INVALIDOS "El método de pago indicado no existe."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 99 }
+
+### Sin método de pago
+# Esperado: 400 DATOS_INVALIDOS "El método de pago (idMetodoPago) es obligatorio."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ }
+
+### Comprobar que el registro 30 sigue abierto después de los errores
+# Esperado: 200 con "estado": "ACTIVO", "salida": null y "pagos": []
+GET {{base}}/registros/30
+
+### Salida de un registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+POST {{base}}/registros/999/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### La salida solo acepta POST
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: POST
+GET {{base}}/registros/30/salida
