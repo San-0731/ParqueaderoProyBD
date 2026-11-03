@@ -40,8 +40,11 @@ import java.util.Set;
  */
 public final class Router {
 
-    /** Métodos soportados, en el orden en que se listan en un 405. */
-    private static final List<String> METODOS_SOPORTADOS =
+    /**
+     * Métodos soportados, en el orden en que se listan en un 405. Es pública
+     * (e inmutable) porque las cabeceras CORS anuncian esta misma lista.
+     */
+    public static final List<String> METODOS_SOPORTADOS =
             List.of("GET", "POST", "PUT", "PATCH", "DELETE");
 
     private final List<Ruta> rutas = new ArrayList<>();

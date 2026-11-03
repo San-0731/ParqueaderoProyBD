@@ -8,6 +8,6 @@ package com.parqueadero.exception;
 public class RutaNoEncontradaException extends AplicacionException {
 
     public RutaNoEncontradaException(String mensaje) {
-        super(404, mensaje);
+        super(404, "RUTA_NO_ENCONTRADA", mensaje);
     }
 }
