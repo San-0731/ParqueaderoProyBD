@@ -6,6 +6,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.Strictness;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import com.parqueadero.exception.DatosInvalidosException;
 
@@ -46,6 +47,10 @@ public final class Json {
     private static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new AdaptadorFechaHora().nullSafe())
             .registerTypeAdapter(LocalDate.class, new AdaptadorFecha().nullSafe())
+            // Gson acepta por defecto {"habilitado": "si"} y lo convierte en false
+            // (Boolean.parseBoolean) sin avisar. Este adaptador solo acepta true/false.
+            .registerTypeAdapter(Boolean.class, new AdaptadorBooleano().nullSafe())
+            .registerTypeAdapter(boolean.class, new AdaptadorBooleano().nullSafe())
             // Incluir los campos nulos en la salida.
             .serializeNulls()
             // Sin esto Gson escribe la comilla simple y el signo = como códigos
@@ -136,6 +141,32 @@ public final class Json {
                 throw new DatosInvalidosException("La fecha y hora '" + texto
                         + "' no es válida. Formato esperado: 2026-11-03T14:30:00.", e);
             }
+        }
+    }
+
+    /**
+     * Booleanos estrictos: solo los literales JSON {@code true} y {@code false}.
+     * Un texto ({@code "si"}, {@code "true"}) o un número son un error 400.
+     */
+    private static final class AdaptadorBooleano extends TypeAdapter<Boolean> {
+
+        @Override
+        public void write(JsonWriter salida, Boolean valor) throws IOException {
+            salida.value(valor);
+        }
+
+        @Override
+        public Boolean read(JsonReader entrada) throws IOException {
+            if (entrada.peek() == JsonToken.BOOLEAN) {
+                return entrada.nextBoolean();
+            }
+            String ruta = entrada.getPath();
+            String valor = switch (entrada.peek()) {
+                case STRING, NUMBER -> "'" + entrada.nextString() + "'";
+                default -> "recibido";
+            };
+            throw new DatosInvalidosException("El valor " + valor
+                    + " no es válido; se esperaba true o false. Revisa el valor en " + ruta + ".");
         }
     }
 

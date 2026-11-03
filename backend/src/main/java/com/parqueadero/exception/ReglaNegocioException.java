@@ -9,10 +9,10 @@ package com.parqueadero.exception;
 public class ReglaNegocioException extends AplicacionException {
 
     public ReglaNegocioException(String mensaje) {
-        super(409, mensaje);
+        super(409, "REGLA_NEGOCIO", mensaje);
     }
 
     public ReglaNegocioException(String mensaje, Throwable causa) {
-        super(409, mensaje, causa);
+        super(409, "REGLA_NEGOCIO", mensaje, causa);
     }
 }

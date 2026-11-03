@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuración de la aplicación (datos de MySQL y puerto del servidor HTTP).
+ * Configuración de la aplicación (datos de MySQL, puerto del servidor HTTP y
+ * origen permitido por CORS).
  *
  * <p>Cada variable se busca primero en las variables de entorno del sistema
  * ({@link System#getenv(String)}). Si no existe o está vacía, se toma del
@@ -23,7 +24,20 @@ public final class Configuracion {
 
     /** Variables que deben existir para que la aplicación arranque. */
     private static final List<String> VARIABLES_OBLIGATORIAS = List.of(
-            "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "PORT");
+            "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD");
+
+    /**
+     * Variables opcionales y su valor por defecto. En local sirven los valores
+     * por defecto; en el despliegue se definen con variables de entorno.
+     * <ul>
+     *   <li>{@code PORT}: puerto del servidor HTTP del backend.</li>
+     *   <li>{@code CORS_ORIGIN}: dirección del frontend que puede llamar a la
+     *       API desde el navegador (Vite usa el puerto 5173).</li>
+     * </ul>
+     */
+    private static final Map<String, String> VARIABLES_OPCIONALES = Map.of(
+            "PORT", "8080",
+            "CORS_ORIGIN", "http://localhost:5173");
 
     private final String dbHost;
     private final int dbPuerto;
@@ -31,6 +45,7 @@ public final class Configuracion {
     private final String dbUsuario;
     private final String dbContrasena;
     private final int puertoServidor;
+    private final String origenCors;
 
     // Privado: la única forma de crear la configuración es con cargar(),
     // que garantiza que ninguna variable obligatoria falte.
@@ -41,14 +56,16 @@ public final class Configuracion {
         this.dbUsuario = valores.get("DB_USER");
         this.dbContrasena = valores.get("DB_PASSWORD");
         this.puertoServidor = leerPuerto("PORT", valores.get("PORT"));
+        this.origenCors = leerOrigenCors(valores.get("CORS_ORIGIN"));
     }
 
     /**
-     * Lee las variables obligatorias del sistema o del archivo {@code .env}.
+     * Lee las variables del sistema o del archivo {@code .env}. Las opcionales
+     * que no estén definidas toman su valor por defecto.
      *
      * @return la configuración completa
-     * @throws IllegalStateException si falta alguna variable, si un puerto no
-     *         es válido o si el archivo {@code .env} no se puede leer
+     * @throws IllegalStateException si falta alguna variable obligatoria, si un
+     *         valor no es válido o si el archivo {@code .env} no se puede leer
      */
     public static Configuracion cargar() {
         Path carpetaActual = Path.of(System.getProperty("user.dir")).toAbsolutePath();
@@ -59,18 +76,17 @@ public final class Configuracion {
         Map<String, String> valores = new HashMap<>();
         List<String> faltantes = new ArrayList<>();
         for (String nombre : VARIABLES_OBLIGATORIAS) {
-            // 1.º variables del sistema; 2.º archivo .env
-            String valor = System.getenv(nombre);
-            if (estaVacio(valor)) {
-                valor = valoresArchivo.get(nombre);
-            }
-
-            if (estaVacio(valor)) {
+            String valor = buscarVariable(nombre, valoresArchivo);
+            if (valor == null) {
                 faltantes.add(nombre);
             } else {
-                valores.put(nombre, valor.strip());
+                valores.put(nombre, valor);
             }
         }
+        VARIABLES_OPCIONALES.forEach((nombre, porDefecto) -> {
+            String valor = buscarVariable(nombre, valoresArchivo);
+            valores.put(nombre, valor != null ? valor : porDefecto);
+        });
 
         if (!faltantes.isEmpty()) {
             String origen = archivoEnv != null
@@ -84,6 +100,20 @@ public final class Configuracion {
         }
 
         return new Configuracion(valores);
+    }
+
+    /**
+     * Busca una variable: 1.º en las variables del sistema; 2.º en el archivo
+     * {@code .env}.
+     *
+     * @return el valor sin espacios alrededor, o {@code null} si no está o está vacía
+     */
+    private static String buscarVariable(String nombre, Map<String, String> valoresArchivo) {
+        String valor = System.getenv(nombre);
+        if (estaVacio(valor)) {
+            valor = valoresArchivo.get(nombre);
+        }
+        return estaVacio(valor) ? null : valor.strip();
     }
 
     /**
@@ -186,6 +216,26 @@ public final class Configuracion {
                 + " debe ser un número entre 1 y 65535, pero vale '" + valor + "'.");
     }
 
+    /**
+     * Valida el origen CORS. Debe ser una dirección como
+     * {@code http://localhost:5173} o {@code *} (cualquier origen). Se quita la
+     * barra final porque el navegador envía el origen sin ella, y con la barra
+     * no coincidiría.
+     */
+    private static String leerOrigenCors(String valor) {
+        if (valor.equals("*")) {
+            return valor;
+        }
+        String sinBarraFinal = valor.replaceAll("/+$", "");
+        boolean esDireccion = sinBarraFinal.matches("https?://\\S+");
+        if (!esDireccion) {
+            throw new IllegalStateException("La variable CORS_ORIGIN debe ser la dirección del"
+                    + " frontend, por ejemplo http://localhost:5173 (o * para permitir"
+                    + " cualquier origen), pero vale '" + valor + "'.");
+        }
+        return sinBarraFinal;
+    }
+
     private static boolean estaVacio(String valor) {
         return valor == null || valor.isBlank();
     }
@@ -215,5 +265,10 @@ public final class Configuracion {
 
     public int getPuertoServidor() {
         return puertoServidor;
+    }
+
+    /** Origen permitido por CORS, por ejemplo {@code http://localhost:5173}. */
+    public String getOrigenCors() {
+        return origenCors;
     }
 }

@@ -1,0 +1,804 @@
+# =============================================================================
+# Peticiones de prueba de la API del parqueadero.
+#
+# Cómo usarlo:
+#   1. Instalar la extensión REST Client de VS Code (humao.rest-client; VS Code
+#      la sugiere al abrir el proyecto).
+#   2. Encender MySQL (docker compose up -d) y el backend
+#      (cd backend && java -jar target/parqueadero-backend.jar).
+#   3. Hacer clic en "Send Request" encima de cada petición.
+#
+# Cada petición indica en "# Esperado:" el código HTTP y lo que debe responder.
+# Los errores siempre llegan como { "error": "CODIGO", "mensaje": "..." }.
+#
+# ⚠️ Los POST de "Crear vehículo" y "Crear cliente" guardan XYZ987 y el cliente
+# 1000000001 en la base de forma permanente (no hay DELETE). La "Entrada
+# exitosa" deja a KLM234 parqueado (ACTIVO) en el espacio 3, y las salidas
+# exitosas cierran los registros 29 y 31 con su pago. Para volver a los datos
+# iniciales, desde la raíz:
+#   docker compose down -v && docker compose up -d
+# =============================================================================
+
+@base = http://localhost:8080/api
+
+
+# =============================================================================
+# General: salud, CORS y errores de ruta
+# =============================================================================
+
+### Salud del servidor y de la base de datos
+# Esperado: 200 {"estado":"OK","baseDatos":"OK"}
+# (con MySQL apagado: 503 {"estado":"OK","baseDatos":"ERROR"})
+GET {{base}}/salud
+
+### Preflight de CORS (lo que envía el navegador antes de un POST desde React)
+# Esperado: 204 sin cuerpo, con las cabeceras Access-Control-Allow-*
+OPTIONS {{base}}/vehiculos
+Origin: http://localhost:5173
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
+
+### Ruta que no existe
+# Esperado: 404 RUTA_NO_ENCONTRADA
+GET {{base}}/xyz
+
+### Método no permitido en una ruta que sí existe
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+POST {{base}}/salud
+
+###
+# =============================================================================
+# Vehículos: consultas
+# =============================================================================
+
+### Listar todos los vehículos
+# Esperado: 200 con la lista (15 vehículos con los datos de prueba iniciales)
+GET {{base}}/vehiculos
+
+### Buscar por placa: el texto se normaliza (klm-234 → KLM234)
+# Esperado: 200 con una lista de un elemento: [{ ..., "identificador": "KLM234", ... }]
+GET {{base}}/vehiculos?identificador=klm-234
+
+### Buscar una placa que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/vehiculos?identificador=noexiste
+
+### Vehículo por id
+# Esperado: 200 con el vehículo 1 (KLM234)
+GET {{base}}/vehiculos/1
+
+### Vehículo con un id que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/vehiculos/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/vehiculos/abc
+
+###
+# =============================================================================
+# Vehículos: crear
+# =============================================================================
+
+### Crear vehículo (el identificador se guarda normalizado como XYZ987)
+# Esperado: 201 con el vehículo creado y su idVehiculo
+# (si XYZ987 ya existía: 409 REGLA_NEGOCIO)
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "xyz-987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "color": "Rojo",
+  "anio": 2020
+}
+
+### Crear con una placa que ya existe
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un vehículo con la placa o código 'XYZ987'."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Crear sin los campos obligatorios
+# Esperado: 400 DATOS_INVALIDOS con los dos errores en el mismo mensaje
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111"
+}
+
+### Crear con un JSON mal formado
+# Esperado: 400 DATOS_INVALIDOS "El cuerpo de la petición no es un JSON válido. ..."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{ "identificador":
+
+### Crear con un tipo de vehículo que no existe (llave foránea)
+# Esperado: 400 DATOS_INVALIDOS "El tipo de vehículo indicado no existe."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 99,
+  "idCliente": 1
+}
+
+### Crear con un cliente que no existe (llave foránea)
+# Esperado: 400 DATOS_INVALIDOS "El cliente indicado no existe."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 3,
+  "idCliente": 999
+}
+
+### Crear con un id negativo (fuera del rango de INT UNSIGNED)
+# Esperado: 400 DATOS_INVALIDOS "El valor de 'id_tipo' está fuera del rango permitido."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": -1,
+  "idCliente": 1
+}
+
+### Crear con un año fuera de rango (CHECK de la base de datos)
+# Esperado: 400 DATOS_INVALIDOS "El año del vehículo debe estar entre 1900 y 2100."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 3,
+  "idCliente": 1,
+  "anio": 1800
+}
+
+###
+# =============================================================================
+# Vehículos: actualizar (PUT reemplaza todos los datos del vehículo)
+# =============================================================================
+
+### Buscar el vehículo de prueba XYZ987 (ejecutar ANTES de los PUT siguientes)
+# Esperado: 200 con [{ "idVehiculo": ..., "identificador": "XYZ987", ... }]
+# Los PUT usan su idVehiculo, así no hay que copiarlo a mano.
+# @name vehiculoPrueba
+GET {{base}}/vehiculos?identificador=XYZ987
+
+### Actualizar el color del vehículo de prueba
+# Esperado: 200 con el vehículo y "color": "Azul"
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "color": "Azul",
+  "anio": 2020
+}
+
+### Actualizar sin enviar el color: el campo queda en null
+# Esperado: 200 con "color": null
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "XYZ987",
+  "idTipo": 3,
+  "idModelo": 1,
+  "idCliente": 1,
+  "anio": 2020
+}
+
+### Cambiar la placa a una que ya tiene otro vehículo
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un vehículo con la placa o código 'KLM234'."
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "KLM234",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Actualizar un vehículo que no existe
+# Esperado: 404 NO_ENCONTRADO
+PUT {{base}}/vehiculos/999
+Content-Type: application/json
+
+{
+  "identificador": "ZZZ999",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Borrar no está permitido (no existe DELETE de vehículos)
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
+DELETE {{base}}/vehiculos/1
+
+###
+# =============================================================================
+# Catálogos (solo lectura): llenan las listas desplegables del frontend
+# =============================================================================
+
+### Tipos de vehículo
+# Esperado: 200 con 4 tipos (Moto, Bicicleta, Carro, Camión)
+GET {{base}}/tipos-vehiculo
+
+### Métodos de pago (requiereReferencia: si el pago exige un código de transacción)
+# Esperado: 200 con 4 métodos (PSE, Nequi y Daviplata con referencia; Efectivo sin ella)
+GET {{base}}/metodos-pago
+
+### Tarifa vigente hoy de cada tipo de vehículo
+# Esperado: 200 con 4 tarifas, una por tipo (las de 2026-10-01; Carro: 5000.00)
+GET {{base}}/tarifas/vigente
+
+### Marcas (ordenadas por nombre)
+# Esperado: 200 con 9 marcas
+GET {{base}}/marcas
+
+### Todos los modelos
+# Esperado: 200 con 12 modelos
+GET {{base}}/modelos
+
+### Modelos de una marca (1 = Chevrolet)
+# Esperado: 200 con 3 modelos (NHR, Onix, Spark)
+GET {{base}}/modelos?idMarca=1
+
+### Modelos de una marca que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/modelos?idMarca=999
+
+### Filtro de marca que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/modelos?idMarca=abc
+
+###
+# =============================================================================
+# Clientes (propietarios): consultas
+# =============================================================================
+
+### Listar todos los clientes
+# Esperado: 200 con la lista (10 clientes con los datos de prueba iniciales)
+GET {{base}}/clientes
+
+### Buscar por documento: se quitan puntos, espacios y guiones (1.012.345.678 → 1012345678)
+# Esperado: 200 con una lista de un elemento: [{ ..., "nombres": "Laura Camila", ... }]
+GET {{base}}/clientes?documento=1.012.345.678
+
+### Buscar un documento que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/clientes?documento=999999
+
+### Cliente por id
+# Esperado: 200 con el cliente 1 (Laura Camila Gómez Rojas)
+GET {{base}}/clientes/1
+
+### Cliente con un id que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/clientes/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/clientes/abc
+
+###
+# =============================================================================
+# Clientes: crear
+# =============================================================================
+
+### Crear cliente (el documento se guarda como 1000000001 y el teléfono como 3100000001)
+# Esperado: 201 con el cliente creado y su idCliente
+# (si el documento ya existía: 409 REGLA_NEGOCIO)
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1.000.000.001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez",
+  "telefono": "310 000-0001"
+}
+
+### Crear con un documento que ya existe
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un cliente con el documento '1000000001'."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Otra",
+  "apellidos": "Persona"
+}
+
+### Crear sin los campos obligatorios
+# Esperado: 400 DATOS_INVALIDOS con los tres errores en el mismo mensaje
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "telefono": "3100000002"
+}
+
+### Crear con un teléfono que tiene letras
+# Esperado: 400 DATOS_INVALIDOS "El teléfono solo puede tener números (y un + al inicio)."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1000000002",
+  "nombres": "Ana",
+  "apellidos": "Pérez",
+  "telefono": "310-ABC-0000"
+}
+
+### Crear con un JSON mal formado
+# Esperado: 400 DATOS_INVALIDOS "El cuerpo de la petición no es un JSON válido. ..."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{ "documento": 
+
+###
+# =============================================================================
+# Clientes: actualizar (PUT reemplaza todos los datos del cliente)
+# =============================================================================
+
+### Buscar el cliente de prueba 1000000001 (ejecutar ANTES de los PUT siguientes)
+# Esperado: 200 con [{ "idCliente": ..., "documento": "1000000001", ... }]
+# @name clientePrueba
+GET {{base}}/clientes?documento=1000000001
+
+### Actualizar el teléfono del cliente de prueba
+# Esperado: 200 con el cliente y "telefono": "3209999999"
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez",
+  "telefono": "320 999 9999"
+}
+
+### Actualizar sin enviar el teléfono: el campo queda en null
+# Esperado: 200 con "telefono": null
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez"
+}
+
+### Cambiar el documento a uno que ya tiene otro cliente
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un cliente con el documento '1012345678'."
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1012345678",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez"
+}
+
+### Actualizar un cliente que no existe
+# Esperado: 404 NO_ENCONTRADO
+PUT {{base}}/clientes/999
+Content-Type: application/json
+
+{
+  "documento": "1000000009",
+  "nombres": "Nadie",
+  "apellidos": "Existe"
+}
+
+### Borrar no está permitido (no existe DELETE de clientes)
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
+DELETE {{base}}/clientes/1
+
+###
+# =============================================================================
+# Espacios: consultas
+# habilitado = en servicio; ocupado = tiene un parqueo ACTIVO;
+# disponible = habilitado y libre (se puede parquear ahí ahora)
+# =============================================================================
+
+### Listar todos los espacios con su estado (por piso, zona y número)
+# Esperado: 200 con 20 espacios (datos iniciales)
+GET {{base}}/espacios
+
+### Espacios de un tipo de vehículo (1 = Moto)
+# Esperado: 200 con los 4 espacios de motos
+GET {{base}}/espacios?idTipo=1
+
+### Espacios disponibles (usa la vista vw_espacios_disponibles)
+# Esperado: 200 con 15 espacios (20 menos 4 ocupados y 1 deshabilitado)
+GET {{base}}/espacios?disponible=true
+
+### Filtros combinados: espacios disponibles para carros (3 = Carro)
+# Esperado: 200 con 9 espacios
+GET {{base}}/espacios?idTipo=3&disponible=true
+
+### Espacios NO disponibles (ocupados o deshabilitados)
+# Esperado: 200 con 5 espacios (2, 10, 14 y 20 ocupados; 16 deshabilitado)
+GET {{base}}/espacios?disponible=false
+
+### Filtro disponible con un valor que no es true ni false
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'disponible' debe ser true o false; ..."
+GET {{base}}/espacios?disponible=si
+
+### Filtro de tipo que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/espacios?idTipo=abc
+
+### Espacio ocupado
+# Esperado: 200 con "habilitado": true, "ocupado": true, "disponible": false
+GET {{base}}/espacios/2
+
+### Espacio deshabilitado (en mantenimiento)
+# Esperado: 200 con "habilitado": false, "ocupado": false, "disponible": false
+GET {{base}}/espacios/16
+
+### Espacio que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/espacios/999
+
+###
+# =============================================================================
+# Espacios: habilitar y deshabilitar
+# Cada "deshabilitar" va seguido de su "habilitar", así los datos quedan igual.
+# =============================================================================
+
+### Deshabilitar un espacio libre
+# Esperado: 200 con "habilitado": false, "disponible": false
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Comprobar que el espacio 1 ya no aparece como disponible
+# Esperado: 200 con 14 espacios (sin el 1)
+GET {{base}}/espacios?disponible=true
+
+### Volver a habilitar el espacio 1
+# Esperado: 200 con "habilitado": true, "disponible": true
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": true }
+
+### Deshabilitar un espacio ocupado (permitido: el vehículo termina su parqueo)
+# Esperado: 200 con "habilitado": false, "ocupado": true, "disponible": false
+PATCH {{base}}/espacios/2/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Volver a habilitar el espacio 2
+# Esperado: 200 con "habilitado": true, "ocupado": true
+PATCH {{base}}/espacios/2/habilitado
+Content-Type: application/json
+
+{ "habilitado": true }
+
+### Cambiar sin enviar el campo habilitado
+# Esperado: 400 DATOS_INVALIDOS "El campo habilitado es obligatorio (true o false)."
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ }
+
+### Cambiar con un texto en vez de true/false
+# Esperado: 400 DATOS_INVALIDOS "El valor 'si' no es válido; se esperaba true o false. ..."
+PATCH {{base}}/espacios/1/habilitado
+Content-Type: application/json
+
+{ "habilitado": "si" }
+
+### Cambiar un espacio que no existe
+# Esperado: 404 NO_ENCONTRADO
+PATCH {{base}}/espacios/999/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+PATCH {{base}}/espacios/abc/habilitado
+Content-Type: application/json
+
+{ "habilitado": false }
+
+### Borrar no está permitido
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+DELETE {{base}}/espacios/1
+
+###
+# =============================================================================
+# Registros de parqueo: entrada
+# Las reglas (tipo del espacio, habilitado, ocupado, vehículo ya adentro) las
+# aplica la base de datos; la API traduce su error a 409.
+# =============================================================================
+
+### Entrada exitosa: KLM234 (Carro) en el espacio 3 (Carro, libre)
+# Esperado: 201 con "estado": "ACTIVO", "identificador": "KLM234", "pagos": []
+# y "entrada" con la hora actual de Bogotá, sin fracciones de segundo
+# (si KLM234 ya estaba adentro: 409 "El vehículo ya tiene un parqueo activo.")
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "klm-234", "idEspacio": 3 }
+
+### Tipo distinto: una moto (ABC12D) en un espacio de carro (4)
+# Esperado: 409 REGLA_NEGOCIO "El tipo del vehículo no coincide con el tipo del espacio" (trigger)
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "ABC12D", "idEspacio": 4 }
+
+### Espacio deshabilitado (16)
+# Esperado: 409 REGLA_NEGOCIO "El espacio no está habilitado" (trigger)
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 16 }
+
+### Espacio ocupado (2, lo ocupa MVC054)
+# Esperado: 409 REGLA_NEGOCIO "El espacio ya está ocupado por otro vehículo."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 2 }
+
+### Vehículo que ya está adentro (MVC054)
+# Esperado: 409 REGLA_NEGOCIO "El vehículo ya tiene un parqueo activo."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "MVC054", "idEspacio": 5 }
+
+### Vehículo no registrado
+# Esperado: 404 NO_ENCONTRADO "No existe un vehículo con la placa o código 'NOEXISTE1'. Regístralo primero."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "noexiste-1", "idEspacio": 5 }
+
+### Espacio que no existe
+# Esperado: 400 DATOS_INVALIDOS "El espacio indicado no existe."
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ "identificador": "BCD567", "idEspacio": 999 }
+
+### Faltan los dos datos
+# Esperado: 400 DATOS_INVALIDOS con los dos errores en el mismo mensaje
+POST {{base}}/registros/entrada
+Content-Type: application/json
+
+{ }
+
+### La entrada solo acepta POST
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: POST
+GET {{base}}/registros/entrada
+
+###
+# =============================================================================
+# Registros de parqueo: consultas
+# =============================================================================
+
+### Vehículos que están adentro ahora
+# Esperado: 200 con 5 registros con los datos de prueba (los 4 iniciales + KLM234),
+# cada uno con "minutosTranscurridos"
+GET {{base}}/registros/activos
+
+### Buscar el registro activo de KLM234 (lo usa el detalle de abajo)
+# Esperado: 200 con una lista de un elemento: [{ "idRegistro": ..., "identificador": "KLM234", ... }]
+# @name registroPrueba
+GET {{base}}/registros/activos?identificador=klm-234
+
+### Detalle del registro activo de KLM234
+# Esperado: 200 con "estado": "ACTIVO", "salida": null, "valorTotal": null, "pagos": []
+GET {{base}}/registros/{{registroPrueba.response.body.$[0].idRegistro}}
+
+### Buscar un vehículo que no está adentro
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/registros/activos?identificador=BCD567
+
+### Historial completo (solo parqueos terminados, el más reciente primero)
+# Esperado: 200 con 27 registros con los datos de prueba
+GET {{base}}/registros
+
+### Historial de octubre de 2026 (ambas fechas incluidas)
+# Esperado: 200 con 15 registros
+GET {{base}}/registros?desde=2026-10-01&hasta=2026-10-31
+
+### Historial de un vehículo
+# Esperado: 200 con los 3 parqueos terminados de KLM234
+GET {{base}}/registros?identificador=klm-234
+
+### Historial de los parqueos pagados con PSE (id 1), aunque sea en parte
+# Esperado: 200 con 6 registros
+GET {{base}}/registros?idMetodoPago=1
+
+### Detalle de un parqueo pagado con dos métodos
+# Esperado: 200 con "estado": "PAGO" y dos pagos en "pagos" (Efectivo y Nequi)
+GET {{base}}/registros/6
+
+### Rango de fechas al revés
+# Esperado: 400 DATOS_INVALIDOS "La fecha 'desde' (2026-10-31) no puede ser posterior a la fecha 'hasta' (2026-10-01)."
+GET {{base}}/registros?desde=2026-10-31&hasta=2026-10-01
+
+### Fecha con otro formato
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'desde' debe ser una fecha con formato 2026-11-03; se recibió '31-10-2026'."
+GET {{base}}/registros?desde=31-10-2026
+
+### Método de pago que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros?idMetodoPago=abc
+
+### Registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/registros/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros/abc
+
+###
+# =============================================================================
+# Registros de parqueo: salida y pago
+# Cobro por hora o fracción con la tarifa vigente en la fecha de entrada
+# (0 minutos = no se cobra). Cerrar el registro y guardar el pago van en una
+# sola transacción: si algo falla, el registro sigue ACTIVO y sin pago.
+# =============================================================================
+
+### Liquidación del registro 28 (MVC054, Carro): lo que pagaría si saliera ahora
+# Esperado: 200 con "minutosTotales", "horasCobradas", "valorHora": 5000.00 y
+# "valorTotal" = horasCobradas × 5000. No guarda nada.
+GET {{base}}/registros/28/liquidacion
+
+### Liquidación de un registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/registros/999/liquidacion
+
+### Liquidación con un id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/registros/abc/liquidacion
+
+### Salida del registro 29 (WZE620) pagando con Nequi
+# Esperado: 200 con "estado": "PAGO", salida, minutos, valor y un pago por el
+# valor total con "idMetodo": 2 y "referencia": "NEQ-PRUEBA-001"
+# (si ya se había cerrado: 409 REGLA_NEGOCIO)
+POST {{base}}/registros/29/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 2, "referencia": "NEQ-PRUEBA-001" }
+
+### Cerrar otra vez el mismo registro
+# Esperado: 409 REGLA_NEGOCIO "El parqueo 29 ya está cerrado: la salida se registró el ..."
+POST {{base}}/registros/29/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### Liquidación de un registro ya cerrado
+# Esperado: 409 REGLA_NEGOCIO "El parqueo 29 ya está cerrado: ..."
+GET {{base}}/registros/29/liquidacion
+
+### El espacio del registro 29 (14) quedó libre
+# Esperado: 200 con "ocupado": false, "disponible": true
+GET {{base}}/espacios/14
+
+### Salida del registro 31 (bicicleta) en efectivo, sin referencia
+# Esperado: 200 con "estado": "PAGO" y un pago con "idMetodo": 4 y "referencia": null
+POST {{base}}/registros/31/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### PSE sin referencia
+# Esperado: 400 DATOS_INVALIDOS "El pago con PSE requiere la referencia (código de la transacción)."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 1 }
+
+### Referencia que ya usó otro pago (demuestra el rollback)
+# El UPDATE que cierra el registro sí se ejecuta, pero el INSERT del pago falla
+# por el UNIQUE de la referencia: el rollback deshace el UPDATE.
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un pago con la referencia 'NEQ-0001'."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 2, "referencia": "NEQ-0001" }
+
+### Método de pago que no existe
+# Esperado: 400 DATOS_INVALIDOS "El método de pago indicado no existe."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 99 }
+
+### Sin método de pago
+# Esperado: 400 DATOS_INVALIDOS "El método de pago (idMetodoPago) es obligatorio."
+POST {{base}}/registros/30/salida
+Content-Type: application/json
+
+{ }
+
+### Comprobar que el registro 30 sigue abierto después de los errores
+# Esperado: 200 con "estado": "ACTIVO", "salida": null y "pagos": []
+GET {{base}}/registros/30
+
+### Salida de un registro que no existe
+# Esperado: 404 NO_ENCONTRADO
+POST {{base}}/registros/999/salida
+Content-Type: application/json
+
+{ "idMetodoPago": 4 }
+
+### La salida solo acepta POST
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: POST
+GET {{base}}/registros/30/salida
+
+###
+# =============================================================================
+# Reportes
+# Los ingresos se cuentan por la fecha del PAGO (vista vw_ingresos_por_metodo).
+# Las cifras exactas son las de los datos iniciales: las salidas de arriba
+# agregan pagos con la fecha de hoy.
+# =============================================================================
+
+### Ingresos sin filtros
+# Esperado: 200 con "cantidadPagos": 29 y "totalGeneral": 505600.00 con los datos
+# iniciales, "porMetodo" con los 4 métodos, "porDia" y "detalle" (29 filas)
+GET {{base}}/reportes/ingresos
+
+### Ingresos del 1 al 5 de octubre de 2026
+# Esperado: 200 con "cantidadPagos": 5, "totalGeneral": 181000.00,
+# "porMetodo": Daviplata 26000, Nequi 10000, PSE 145000 y
+# "porDia": 01-oct 130000, 02-oct 6000, 05-oct 45000
+GET {{base}}/reportes/ingresos?desde=2026-10-01&hasta=2026-10-05
+
+### Ingresos de octubre de 2026
+# Esperado: 200 con "totalGeneral": 326000.00 y 17 filas en "detalle"
+GET {{base}}/reportes/ingresos?desde=2026-10-01&hasta=2026-10-31
+
+### Rango sin pagos (no es un error)
+# Esperado: 200 con "cantidadPagos": 0, "totalGeneral": 0 y las tres listas vacías
+GET {{base}}/reportes/ingresos?desde=2027-01-01&hasta=2027-01-31
+
+### Rango de fechas al revés
+# Esperado: 400 DATOS_INVALIDOS "La fecha 'desde' (2026-10-31) no puede ser posterior a la fecha 'hasta' (2026-10-01)."
+GET {{base}}/reportes/ingresos?desde=2026-10-31&hasta=2026-10-01
+
+### Fecha con otro formato
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'hasta' debe ser una fecha con formato 2026-11-03; se recibió '31/10/2026'."
+GET {{base}}/reportes/ingresos?hasta=31/10/2026
+
+### Ocupación de los espacios por tipo de vehículo
+# Esperado: 200 con los 4 tipos; en cada uno ocupados + libres + deshabilitados = total
+# (datos iniciales: Moto 4 = 1+3+0, Bicicleta 2 = 1+1+0, Carro 12 = 2+9+1, Camión 2 = 0+2+0)
+GET {{base}}/reportes/ocupacion
+
+### Los reportes solo se consultan
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+POST {{base}}/reportes/ingresos

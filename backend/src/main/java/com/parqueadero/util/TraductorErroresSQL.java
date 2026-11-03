@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
  *   <tr><td>1452: la llave foránea apunta a algo que no existe</td><td>DatosInvalidosException (400)</td></tr>
  *   <tr><td>3819: no se cumple un CHECK</td><td>DatosInvalidosException (400)</td></tr>
  *   <tr><td>1048: columna obligatoria en NULL</td><td>DatosInvalidosException (400)</td></tr>
+ *   <tr><td>1264: número fuera del rango de la columna (por ejemplo, un id negativo)</td><td>DatosInvalidosException (400)</td></tr>
+ *   <tr><td>1406: texto más largo que la columna</td><td>DatosInvalidosException (400)</td></tr>
  *   <tr><td>Cualquier otro</td><td>RuntimeException (error interno, 500)</td></tr>
  * </table>
  */
@@ -47,6 +49,8 @@ public final class TraductorErroresSQL {
     private static final int ER_LLAVE_FORANEA_NO_EXISTE = 1452;
     private static final int ER_CHECK = 3819;
     private static final int ER_COLUMNA_NULA = 1048;
+    private static final int ER_FUERA_DE_RANGO = 1264;
+    private static final int ER_DEMASIADO_LARGO = 1406;
 
     // Patrones para sacar el nombre de la restricción del mensaje de MySQL.
     // Ejemplo: Duplicate entry 'KLM234' for key 'vehiculo.uq_vehiculo_identificador'
@@ -60,6 +64,13 @@ public final class TraductorErroresSQL {
     // Ejemplo: Column 'id_tipo' cannot be null
     private static final Pattern PATRON_COLUMNA_NULA =
             Pattern.compile("Column '([^']+)' cannot be null");
+    // Ejemplo: Out of range value for column 'id_tipo' at row 1
+    // (con STRICT_TRANS_TABLES, MySQL rechaza -1 o 99999999999 en un INT UNSIGNED)
+    private static final Pattern PATRON_FUERA_DE_RANGO =
+            Pattern.compile("Out of range value for column '([^']+)'");
+    // Ejemplo: Data too long for column 'color' at row 1
+    private static final Pattern PATRON_DEMASIADO_LARGO =
+            Pattern.compile("Data too long for column '([^']+)'");
 
     // -------------------------------------------------------------------------
     // Mensajes por restricción (nombres de V001__crear_tablas.sql).
@@ -167,7 +178,17 @@ public final class TraductorErroresSQL {
             case ER_CHECK -> new DatosInvalidosException(
                     buscarMensaje(PATRON_CHECK, mensaje, MENSAJES_CHECK,
                             "Los datos no cumplen las reglas de la base de datos."), e);
-            case ER_COLUMNA_NULA -> new DatosInvalidosException(mensajeColumnaNula(mensaje), e);
+            case ER_COLUMNA_NULA -> new DatosInvalidosException(
+                    mensajeConColumna(PATRON_COLUMNA_NULA, mensaje,
+                            "Falta un dato obligatorio: %s.", "Falta un dato obligatorio."), e);
+            case ER_FUERA_DE_RANGO -> new DatosInvalidosException(
+                    mensajeConColumna(PATRON_FUERA_DE_RANGO, mensaje,
+                            "El valor de '%s' está fuera del rango permitido.",
+                            "Un valor numérico está fuera del rango permitido."), e);
+            case ER_DEMASIADO_LARGO -> new DatosInvalidosException(
+                    mensajeConColumna(PATRON_DEMASIADO_LARGO, mensaje,
+                            "El valor de '%s' es demasiado largo.",
+                            "Uno de los textos es demasiado largo."), e);
             // Error interno: este mensaje es para los logs, no para el usuario.
             default -> new RuntimeException("Error inesperado de base de datos (SQLState "
                     + e.getSQLState() + ", código " + e.getErrorCode() + "): " + mensaje, e);
@@ -197,10 +218,16 @@ public final class TraductorErroresSQL {
                 : mensajePorDefecto;
     }
 
-    private static String mensajeColumnaNula(String mensajeMySQL) {
-        Matcher coincidencia = PATRON_COLUMNA_NULA.matcher(mensajeMySQL);
+    /**
+     * Para los errores que nombran una columna (1048, 1264, 1406): saca el
+     * nombre con {@code patron} y lo pone en {@code plantilla} ({@code %s});
+     * si no lo encuentra, devuelve {@code mensajePorDefecto}.
+     */
+    private static String mensajeConColumna(Pattern patron, String mensajeMySQL,
+            String plantilla, String mensajePorDefecto) {
+        Matcher coincidencia = patron.matcher(mensajeMySQL);
         return coincidencia.find()
-                ? "Falta un dato obligatorio: " + coincidencia.group(1) + "."
-                : "Falta un dato obligatorio.";
+                ? String.format(plantilla, coincidencia.group(1))
+                : mensajePorDefecto;
     }
 }

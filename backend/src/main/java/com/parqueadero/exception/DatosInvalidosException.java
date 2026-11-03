@@ -8,10 +8,10 @@ package com.parqueadero.exception;
 public class DatosInvalidosException extends AplicacionException {
 
     public DatosInvalidosException(String mensaje) {
-        super(400, mensaje);
+        super(400, "DATOS_INVALIDOS", mensaje);
     }
 
     public DatosInvalidosException(String mensaje, Throwable causa) {
-        super(400, mensaje, causa);
+        super(400, "DATOS_INVALIDOS", mensaje, causa);
     }
 }

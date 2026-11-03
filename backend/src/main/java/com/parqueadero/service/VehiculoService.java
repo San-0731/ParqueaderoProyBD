@@ -47,6 +47,30 @@ public final class VehiculoService {
     }
 
     /**
+     * Lista los vehículos, con filtro opcional por placa o código. Siempre
+     * devuelve una lista, para que el frontend reciba la misma forma con o
+     * sin filtro.
+     *
+     * @param identificador texto a buscar (se normaliza: {@code "klm-234"}
+     *        encuentra {@code "KLM234"}); {@code null} o en blanco = sin filtro
+     * @return todos los vehículos, o una lista con el que coincide, o una lista
+     *         vacía si ninguno coincide
+     */
+    public List<Vehiculo> listar(String identificador) {
+        if (identificador == null || identificador.isBlank()) {
+            return listar();
+        }
+        String normalizado = Identificadores.normalizar(identificador);
+        try (Connection conexion = conexionBD.obtenerConexion()) {
+            return vehiculoDAO.buscarPorIdentificador(conexion, normalizado)
+                    .map(List::of)
+                    .orElse(List.of());
+        } catch (SQLException e) {
+            throw TraductorErroresSQL.traducir(e);
+        }
+    }
+
+    /**
      * Busca un vehículo por su id.
      *
      * @throws NoEncontradoException si no existe

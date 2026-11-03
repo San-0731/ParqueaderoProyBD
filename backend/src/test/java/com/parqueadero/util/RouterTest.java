@@ -9,6 +9,7 @@ import com.parqueadero.exception.DatosInvalidosException;
 import com.parqueadero.exception.MetodoNoPermitidoException;
 import com.parqueadero.exception.RutaNoEncontradaException;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -227,6 +228,44 @@ class RouterTest {
         assertNull(peticion.parametroQueryComoLong("noViene"));
         assertNull(peticion.parametroQueryComoLong("vacio"));
         assertThrows(DatosInvalidosException.class, () -> peticion.parametroQueryComoLong("texto"));
+    }
+
+    @Test
+    void parametroQueryComoBoolean_casos() {
+        Router router = new Router().get("/api/espacios", ECO);
+        Peticion peticion = eco(router, "GET",
+                "/api/espacios?a=true&b=FALSE&c=%20True%20&vacio=&texto=si", null);
+
+        assertEquals(true, peticion.parametroQueryComoBoolean("a"));
+        assertEquals(false, peticion.parametroQueryComoBoolean("b"));
+        assertEquals(true, peticion.parametroQueryComoBoolean("c"));
+        assertNull(peticion.parametroQueryComoBoolean("noViene"));
+        assertNull(peticion.parametroQueryComoBoolean("vacio"));
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> peticion.parametroQueryComoBoolean("texto"));
+        assertEquals("El parámetro 'texto' debe ser true o false; se recibió 'si'.",
+                error.getMessage());
+    }
+
+    @Test
+    void parametroQueryComoFecha_casos() {
+        Router router = new Router().get("/api/registros", ECO);
+        Peticion peticion = eco(router, "GET", "/api/registros?desde=2026-10-01&hasta=%202026-10-31%20"
+                + "&vacio=&dmy=31-10-2026&inexistente=2026-02-30&anioLargo=%2B20000-01-01"
+                + "&conHora=2026-10-01T10:00", null);
+
+        assertEquals(LocalDate.of(2026, 10, 1), peticion.parametroQueryComoFecha("desde"));
+        assertEquals(LocalDate.of(2026, 10, 31), peticion.parametroQueryComoFecha("hasta"));
+        assertNull(peticion.parametroQueryComoFecha("noViene"));
+        assertNull(peticion.parametroQueryComoFecha("vacio"));
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> peticion.parametroQueryComoFecha("dmy"));
+        assertEquals("El parámetro 'dmy' debe ser una fecha con formato 2026-11-03;"
+                + " se recibió '31-10-2026'.", error.getMessage());
+        for (String invalido : List.of("inexistente", "anioLargo", "conHora")) {
+            assertThrows(DatosInvalidosException.class,
+                    () -> peticion.parametroQueryComoFecha(invalido), invalido);
+        }
     }
 
     @Test
