@@ -14,7 +14,7 @@ public class MetodoNoPermitidoException extends AplicacionException {
     private final List<String> metodosPermitidos;
 
     public MetodoNoPermitidoException(String mensaje, List<String> metodosPermitidos) {
-        super(405, mensaje);
+        super(405, "METODO_NO_PERMITIDO", mensaje);
         this.metodosPermitidos = List.copyOf(metodosPermitidos);
     }
 
