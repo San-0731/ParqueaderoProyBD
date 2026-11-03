@@ -12,7 +12,8 @@ Proyecto académico de la materia Bases de Datos.
 - Servidor HTTP: com.sun.net.httpserver.HttpServer (incluido en el JDK).
 - Acceso a datos: JDBC puro, siempre con PreparedStatement y
   try-with-resources. El SQL se escribe a mano.
-- Dependencias permitidas en el backend: MySQL Connector/J, Gson, JUnit 5.
+- Dependencias permitidas en el backend: MySQL Connector/J, Gson y JUnit
+  Jupiter (JUnit 6), en su última versión estable de Maven Central.
   No agregar ninguna otra sin preguntar primero.
 - Base de datos: MySQL 8. Los cambios de esquema van SOLO en archivos
   nuevos database/migrations/V{n}__descripcion.sql. Nunca modificar una
