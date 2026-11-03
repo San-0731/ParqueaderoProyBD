@@ -11,8 +11,9 @@
 # Cada petición indica en "# Esperado:" el código HTTP y lo que debe responder.
 # Los errores siempre llegan como { "error": "CODIGO", "mensaje": "..." }.
 #
-# ⚠️ El POST de "Crear vehículo" guarda XYZ987 en la base de forma permanente
-# (no hay DELETE). Para volver a los datos iniciales, desde la raíz:
+# ⚠️ Los POST de "Crear vehículo" y "Crear cliente" guardan XYZ987 y el cliente
+# 1000000001 en la base de forma permanente (no hay DELETE). Para volver a los
+# datos iniciales, desde la raíz:
 #   docker compose down -v && docker compose up -d
 # =============================================================================
 
@@ -227,3 +228,185 @@ Content-Type: application/json
 ### Borrar no está permitido (no existe DELETE de vehículos)
 # Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
 DELETE {{base}}/vehiculos/1
+
+###
+# =============================================================================
+# Catálogos (solo lectura): llenan las listas desplegables del frontend
+# =============================================================================
+
+### Tipos de vehículo
+# Esperado: 200 con 4 tipos (Moto, Bicicleta, Carro, Camión)
+GET {{base}}/tipos-vehiculo
+
+### Métodos de pago (requiereReferencia: si el pago exige un código de transacción)
+# Esperado: 200 con 4 métodos (PSE, Nequi y Daviplata con referencia; Efectivo sin ella)
+GET {{base}}/metodos-pago
+
+### Tarifa vigente hoy de cada tipo de vehículo
+# Esperado: 200 con 4 tarifas, una por tipo (las de 2026-10-01; Carro: 5000.00)
+GET {{base}}/tarifas/vigente
+
+### Marcas (ordenadas por nombre)
+# Esperado: 200 con 9 marcas
+GET {{base}}/marcas
+
+### Todos los modelos
+# Esperado: 200 con 12 modelos
+GET {{base}}/modelos
+
+### Modelos de una marca (1 = Chevrolet)
+# Esperado: 200 con 3 modelos (NHR, Onix, Spark)
+GET {{base}}/modelos?idMarca=1
+
+### Modelos de una marca que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/modelos?idMarca=999
+
+### Filtro de marca que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/modelos?idMarca=abc
+
+###
+# =============================================================================
+# Clientes (propietarios): consultas
+# =============================================================================
+
+### Listar todos los clientes
+# Esperado: 200 con la lista (10 clientes con los datos de prueba iniciales)
+GET {{base}}/clientes
+
+### Buscar por documento: se quitan puntos, espacios y guiones (1.012.345.678 → 1012345678)
+# Esperado: 200 con una lista de un elemento: [{ ..., "nombres": "Laura Camila", ... }]
+GET {{base}}/clientes?documento=1.012.345.678
+
+### Buscar un documento que no existe
+# Esperado: 200 con una lista vacía: []
+GET {{base}}/clientes?documento=999999
+
+### Cliente por id
+# Esperado: 200 con el cliente 1 (Laura Camila Gómez Rojas)
+GET {{base}}/clientes/1
+
+### Cliente con un id que no existe
+# Esperado: 404 NO_ENCONTRADO
+GET {{base}}/clientes/999
+
+### Id que no es un número
+# Esperado: 400 DATOS_INVALIDOS
+GET {{base}}/clientes/abc
+
+###
+# =============================================================================
+# Clientes: crear
+# =============================================================================
+
+### Crear cliente (el documento se guarda como 1000000001 y el teléfono como 3100000001)
+# Esperado: 201 con el cliente creado y su idCliente
+# (si el documento ya existía: 409 REGLA_NEGOCIO)
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1.000.000.001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez",
+  "telefono": "310 000-0001"
+}
+
+### Crear con un documento que ya existe
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un cliente con el documento '1000000001'."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Otra",
+  "apellidos": "Persona"
+}
+
+### Crear sin los campos obligatorios
+# Esperado: 400 DATOS_INVALIDOS con los tres errores en el mismo mensaje
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "telefono": "3100000002"
+}
+
+### Crear con un teléfono que tiene letras
+# Esperado: 400 DATOS_INVALIDOS "El teléfono solo puede tener números (y un + al inicio)."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{
+  "documento": "1000000002",
+  "nombres": "Ana",
+  "apellidos": "Pérez",
+  "telefono": "310-ABC-0000"
+}
+
+### Crear con un JSON mal formado
+# Esperado: 400 DATOS_INVALIDOS "El cuerpo de la petición no es un JSON válido. ..."
+POST {{base}}/clientes
+Content-Type: application/json
+
+{ "documento": 
+
+###
+# =============================================================================
+# Clientes: actualizar (PUT reemplaza todos los datos del cliente)
+# =============================================================================
+
+### Buscar el cliente de prueba 1000000001 (ejecutar ANTES de los PUT siguientes)
+# Esperado: 200 con [{ "idCliente": ..., "documento": "1000000001", ... }]
+# @name clientePrueba
+GET {{base}}/clientes?documento=1000000001
+
+### Actualizar el teléfono del cliente de prueba
+# Esperado: 200 con el cliente y "telefono": "3209999999"
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez",
+  "telefono": "320 999 9999"
+}
+
+### Actualizar sin enviar el teléfono: el campo queda en null
+# Esperado: 200 con "telefono": null
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1000000001",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez"
+}
+
+### Cambiar el documento a uno que ya tiene otro cliente
+# Esperado: 409 REGLA_NEGOCIO "Ya existe un cliente con el documento '1012345678'."
+PUT {{base}}/clientes/{{clientePrueba.response.body.$[0].idCliente}}
+Content-Type: application/json
+
+{
+  "documento": "1012345678",
+  "nombres": "Ana María",
+  "apellidos": "Prueba Pérez"
+}
+
+### Actualizar un cliente que no existe
+# Esperado: 404 NO_ENCONTRADO
+PUT {{base}}/clientes/999
+Content-Type: application/json
+
+{
+  "documento": "1000000009",
+  "nombres": "Nadie",
+  "apellidos": "Existe"
+}
+
+### Borrar no está permitido (no existe DELETE de clientes)
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET, PUT
+DELETE {{base}}/clientes/1
