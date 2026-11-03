@@ -1,4 +1,13 @@
 /**
- * Excepciones propias de la aplicación (por ejemplo, recurso no encontrado o datos inválidos).
+ * Excepciones propias de la aplicación. Todas heredan de
+ * {@link com.parqueadero.exception.AplicacionException} y llevan el código HTTP
+ * con el que el handler debe responder:
+ *
+ * <ul>
+ *   <li>{@link com.parqueadero.exception.NoEncontradoException}: 404, el recurso no existe.</li>
+ *   <li>{@link com.parqueadero.exception.DatosInvalidosException}: 400, los datos enviados no son válidos.</li>
+ *   <li>{@link com.parqueadero.exception.ReglaNegocioException}: 409, los datos son válidos pero
+ *       la operación choca con una regla del negocio o con el estado actual.</li>
+ * </ul>
  */
 package com.parqueadero.exception;
