@@ -2,8 +2,11 @@ package com.parqueadero;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.dao.VehiculoDAO;
 import com.parqueadero.handler.ApiHandler;
 import com.parqueadero.handler.SaludHandler;
+import com.parqueadero.handler.VehiculoHandler;
+import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
 
@@ -62,11 +65,21 @@ public class Main {
         System.out.println("Prueba: curl http://localhost:" + puerto + "/api/salud");
     }
 
-    /** Registra todas las rutas de la API. Los pasos siguientes agregan las suyas aquí. */
+    /**
+     * Crea los handlers (con sus servicios y DAO) y registra todas las rutas de
+     * la API. Los pasos siguientes agregan las suyas aquí.
+     */
     private static Router registrarRutas(ConexionBD conexionBD) {
         SaludHandler salud = new SaludHandler(conexionBD);
+        VehiculoHandler vehiculos = new VehiculoHandler(
+                new VehiculoService(conexionBD, new VehiculoDAO()));
 
         return new Router()
-                .get("/api/salud", salud::consultar);
+                .get("/api/salud", salud::consultar)
+
+                .get("/api/vehiculos", vehiculos::listar)
+                .get("/api/vehiculos/{id}", vehiculos::buscarPorId)
+                .post("/api/vehiculos", vehiculos::crear)
+                .put("/api/vehiculos/{id}", vehiculos::actualizar);
     }
 }
