@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.parqueadero</groupId>
+    <artifactId>parqueadero-backend</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Parqueadero - Backend</name>
+    <description>API del sistema de parqueadero: Java 21 sin frameworks, HttpServer del JDK y JDBC puro.</description>
+
+    <properties>
+        <!-- Java 21: genera bytecode para Java 21 y solo permite usar APIs de Java 21 -->
+        <maven.compiler.release>21</maven.compiler.release>
+        <!-- Codificación de los archivos fuente y de los reportes -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Clase que se ejecuta con "java -jar" -->
+        <main.class>com.parqueadero.Main</main.class>
+
+        <!-- Versiones de las dependencias (actualizar solo aquí) -->
+        <mysql-connector-j.version>26.10.0</mysql-connector-j.version>
+        <gson.version>2.15.0</gson.version>
+        <junit-jupiter.version>6.1.3</junit-jupiter.version>
+
+        <!-- Versiones de los plugins -->
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.6.1</maven-surefire-plugin.version>
+        <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
+    </properties>
+
+    <dependencies>
+        <!-- Driver JDBC para conectarse a MySQL -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql-connector-j.version}</version>
+        </dependency>
+
+        <!-- Conversión entre objetos Java y JSON -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <!-- Pruebas unitarias (solo en la fase de test, no va en el JAR) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Nombre fijo del JAR: target/parqueadero-backend.jar -->
+        <finalName>${project.artifactId}</finalName>
+
+        <plugins>
+            <!-- Compila el código fuente con la versión de Java indicada en maven.compiler.release -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+            </plugin>
+
+            <!-- Ejecuta las pruebas de JUnit en la fase "test"; si una falla, el build se detiene -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+            </plugin>
+
+            <!-- Empaqueta un JAR ejecutable con todas las dependencias adentro ("fat JAR") -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven-shade-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <!-- No generar dependency-reduced-pom.xml en la carpeta del proyecto -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <!-- Escribe Main-Class en el MANIFEST para poder usar "java -jar" -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>${main.class}</mainClass>
+                                </transformer>
+                                <!-- Une los META-INF/services de las dependencias (registro del driver JDBC) -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <!-- Descriptores de módulos de las dependencias: no aplican a un fat JAR -->
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
+                                        <!-- Firmas digitales: dejarían de ser válidas al reempaquetar -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <!-- MANIFEST de cada JAR: lo genera de nuevo ManifestResourceTransformer -->
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
