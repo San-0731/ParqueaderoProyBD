@@ -7,6 +7,8 @@ import com.parqueadero.dao.EspacioDAO;
 import com.parqueadero.dao.MarcaDAO;
 import com.parqueadero.dao.MetodoPagoDAO;
 import com.parqueadero.dao.ModeloDAO;
+import com.parqueadero.dao.PagoDAO;
+import com.parqueadero.dao.RegistroDAO;
 import com.parqueadero.dao.TarifaDAO;
 import com.parqueadero.dao.TipoVehiculoDAO;
 import com.parqueadero.dao.VehiculoDAO;
@@ -14,11 +16,13 @@ import com.parqueadero.handler.ApiHandler;
 import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.EspacioHandler;
+import com.parqueadero.handler.RegistroHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.VehiculoHandler;
 import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.EspacioService;
+import com.parqueadero.service.RegistroService;
 import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
@@ -93,6 +97,8 @@ public class Main {
                 new ClienteService(conexionBD, new ClienteDAO()));
         EspacioHandler espacios = new EspacioHandler(
                 new EspacioService(conexionBD, new EspacioDAO()));
+        RegistroHandler registros = new RegistroHandler(new RegistroService(conexionBD,
+                new VehiculoDAO(), new RegistroDAO(), new PagoDAO()));
 
         return new Router()
                 .get("/api/salud", salud::consultar)
@@ -115,6 +121,13 @@ public class Main {
 
                 .get("/api/espacios", espacios::listar)
                 .get("/api/espacios/{id}", espacios::buscarPorId)
-                .patch("/api/espacios/{id}/habilitado", espacios::cambiarHabilitado);
+                .patch("/api/espacios/{id}/habilitado", espacios::cambiarHabilitado)
+
+                // /registros/activos tiene prioridad sobre /registros/{id}: el
+                // Router prefiere el segmento literal sobre el parámetro.
+                .post("/api/registros/entrada", registros::registrarEntrada)
+                .get("/api/registros/activos", registros::activos)
+                .get("/api/registros", registros::historial)
+                .get("/api/registros/{id}", registros::buscarPorId);
     }
 }
