@@ -758,3 +758,47 @@ Content-Type: application/json
 ### La salida solo acepta POST
 # Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: POST
 GET {{base}}/registros/30/salida
+
+###
+# =============================================================================
+# Reportes
+# Los ingresos se cuentan por la fecha del PAGO (vista vw_ingresos_por_metodo).
+# Las cifras exactas son las de los datos iniciales: las salidas de arriba
+# agregan pagos con la fecha de hoy.
+# =============================================================================
+
+### Ingresos sin filtros
+# Esperado: 200 con "cantidadPagos": 29 y "totalGeneral": 505600.00 con los datos
+# iniciales, "porMetodo" con los 4 métodos, "porDia" y "detalle" (29 filas)
+GET {{base}}/reportes/ingresos
+
+### Ingresos del 1 al 5 de octubre de 2026
+# Esperado: 200 con "cantidadPagos": 5, "totalGeneral": 181000.00,
+# "porMetodo": Daviplata 26000, Nequi 10000, PSE 145000 y
+# "porDia": 01-oct 130000, 02-oct 6000, 05-oct 45000
+GET {{base}}/reportes/ingresos?desde=2026-10-01&hasta=2026-10-05
+
+### Ingresos de octubre de 2026
+# Esperado: 200 con "totalGeneral": 326000.00 y 17 filas en "detalle"
+GET {{base}}/reportes/ingresos?desde=2026-10-01&hasta=2026-10-31
+
+### Rango sin pagos (no es un error)
+# Esperado: 200 con "cantidadPagos": 0, "totalGeneral": 0 y las tres listas vacías
+GET {{base}}/reportes/ingresos?desde=2027-01-01&hasta=2027-01-31
+
+### Rango de fechas al revés
+# Esperado: 400 DATOS_INVALIDOS "La fecha 'desde' (2026-10-31) no puede ser posterior a la fecha 'hasta' (2026-10-01)."
+GET {{base}}/reportes/ingresos?desde=2026-10-31&hasta=2026-10-01
+
+### Fecha con otro formato
+# Esperado: 400 DATOS_INVALIDOS "El parámetro 'hasta' debe ser una fecha con formato 2026-11-03; se recibió '31/10/2026'."
+GET {{base}}/reportes/ingresos?hasta=31/10/2026
+
+### Ocupación de los espacios por tipo de vehículo
+# Esperado: 200 con los 4 tipos; en cada uno ocupados + libres + deshabilitados = total
+# (datos iniciales: Moto 4 = 1+3+0, Bicicleta 2 = 1+1+0, Carro 12 = 2+9+1, Camión 2 = 0+2+0)
+GET {{base}}/reportes/ocupacion
+
+### Los reportes solo se consultan
+# Esperado: 405 METODO_NO_PERMITIDO, con la cabecera Allow: GET
+POST {{base}}/reportes/ingresos

@@ -9,6 +9,7 @@ import com.parqueadero.dao.MetodoPagoDAO;
 import com.parqueadero.dao.ModeloDAO;
 import com.parqueadero.dao.PagoDAO;
 import com.parqueadero.dao.RegistroDAO;
+import com.parqueadero.dao.ReporteDAO;
 import com.parqueadero.dao.TarifaDAO;
 import com.parqueadero.dao.TipoVehiculoDAO;
 import com.parqueadero.dao.VehiculoDAO;
@@ -17,6 +18,7 @@ import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.EspacioHandler;
 import com.parqueadero.handler.RegistroHandler;
+import com.parqueadero.handler.ReporteHandler;
 import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.VehiculoHandler;
@@ -24,6 +26,7 @@ import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.EspacioService;
 import com.parqueadero.service.RegistroService;
+import com.parqueadero.service.ReporteService;
 import com.parqueadero.service.SalidaService;
 import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
@@ -104,6 +107,8 @@ public class Main {
         RegistroHandler registros = new RegistroHandler(registroService);
         SalidaHandler salidas = new SalidaHandler(new SalidaService(conexionBD, new RegistroDAO(),
                 new TarifaDAO(), new MetodoPagoDAO(), new PagoDAO(), registroService));
+        ReporteHandler reportes = new ReporteHandler(
+                new ReporteService(conexionBD, new ReporteDAO()));
 
         return new Router()
                 .get("/api/salud", salud::consultar)
@@ -135,6 +140,9 @@ public class Main {
                 .get("/api/registros", registros::historial)
                 .get("/api/registros/{id}", registros::buscarPorId)
                 .get("/api/registros/{id}/liquidacion", salidas::liquidar)
-                .post("/api/registros/{id}/salida", salidas::registrarSalida);
+                .post("/api/registros/{id}/salida", salidas::registrarSalida)
+
+                .get("/api/reportes/ingresos", reportes::ingresos)
+                .get("/api/reportes/ocupacion", reportes::ocupacion);
     }
 }
