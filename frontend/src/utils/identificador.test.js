@@ -1,4 +1,4 @@
-import { normalizarIdentificador, validarIdentificador } from './identificador.js';
+import { formatearPlaca, normalizarIdentificador, validarIdentificador } from './identificador.js';
 
 describe('normalizarIdentificador', () => {
   it.each([
@@ -39,5 +39,17 @@ describe('validarIdentificador', () => {
     const mensaje = 'La placa o código solo puede tener letras de la A a la Z y números.';
     expect(validarIdentificador('ABÑ123')).toBe(mensaje);
     expect(validarIdentificador('ABC.123')).toBe(mensaje);
+  });
+});
+
+describe('formatearPlaca', () => {
+  it.each([
+    ['KLM234', 'KLM 234'],
+    ['klm-234', 'KLM 234'],
+    ['ABC12D', 'ABC 12D'],
+    ['WTU2024A0153', 'WTU2024A0153'],
+    ['', ''],
+  ])('"%s" se muestra como "%s"', (identificador, esperado) => {
+    expect(formatearPlaca(identificador)).toBe(esperado);
   });
 });

@@ -14,6 +14,22 @@ export function normalizarIdentificador(texto) {
   return (texto ?? '').replaceAll(' ', '').replaceAll('-', '').toUpperCase();
 }
 
+// Formatos de placa colombiana: carro "ABC123" y moto "ABC12D". Otros identificadores
+// (por ejemplo, el código de una bicicleta) se muestran tal cual.
+const FORMATOS_PLACA = [/^([A-Z]{3})(\d{3})$/, /^([A-Z]{3})(\d{2}[A-Z])$/];
+
+/** Para mostrar la placa como en el vehículo: "ABC123" → "ABC 123", "ABC12D" → "ABC 12D". */
+export function formatearPlaca(identificador) {
+  const normalizado = normalizarIdentificador(identificador);
+  for (const formato of FORMATOS_PLACA) {
+    const partes = formato.exec(normalizado);
+    if (partes) {
+      return `${partes[1]} ${partes[2]}`;
+    }
+  }
+  return normalizado;
+}
+
 /**
  * Valida el identificador ya normalizado con las mismas reglas del backend.
  *
