@@ -4,8 +4,14 @@ import { MemoryRouter } from 'react-router';
 import App from './App.jsx';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 
-// El indicador del servidor no debe llamar al backend real: su consulta queda pendiente.
-vi.mock('./api/salud.js', () => ({ consultarSalud: vi.fn(() => new Promise(() => {})) }));
+// Ninguna pantalla debe llamar al backend real: las consultas quedan pendientes para siempre
+// (el indicador del servidor y el tablero de la raíz se quedan en "cargando").
+// vi.hoisted: vi.mock se mueve al inicio del archivo, así que la función también debe ir ahí.
+const { pendiente } = vi.hoisted(() => ({ pendiente: () => vi.fn(() => new Promise(() => {})) }));
+vi.mock('./api/salud.js', () => ({ consultarSalud: pendiente() }));
+vi.mock('./api/espacios.js', () => ({ listarEspacios: pendiente() }));
+vi.mock('./api/reportes.js', () => ({ consultarOcupacion: pendiente() }));
+vi.mock('./api/registros.js', () => ({ listarActivos: pendiente() }));
 
 /** Dibuja la app completa empezando en la ruta indicada (MemoryRouter simula la URL). */
 function renderizarEn(ruta) {

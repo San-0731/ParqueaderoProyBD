@@ -2,6 +2,7 @@ import {
   formatearDuracion,
   formatearFecha,
   formatearFechaHora,
+  formatearHora,
   formatearPesos,
   minutosEntre,
   SIN_DATO,
@@ -40,6 +41,21 @@ describe('formatearFechaHora', () => {
   it('muestra un guion cuando no hay fecha (parqueo activo sin salida)', () => {
     expect(formatearFechaHora(null)).toBe(SIN_DATO);
     expect(formatearFechaHora('no es una fecha')).toBe(SIN_DATO);
+  });
+});
+
+describe('formatearHora', () => {
+  it('acepta el texto del backend', () => {
+    expect(espacios(formatearHora('2026-11-03T15:45:00'))).toBe('3:45 p. m.');
+  });
+
+  it('acepta un Date', () => {
+    expect(espacios(formatearHora(new Date(2026, 10, 3, 9, 5)))).toBe('9:05 a. m.');
+  });
+
+  it('muestra un guion cuando la hora no es válida', () => {
+    expect(formatearHora(null)).toBe(SIN_DATO);
+    expect(formatearHora(new Date('no es una fecha'))).toBe(SIN_DATO);
   });
 });
 

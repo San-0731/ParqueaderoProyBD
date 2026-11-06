@@ -44,6 +44,18 @@
   }
 }
 
+/*
+ * Rayas diagonales de "zona de no parquear" para los espacios deshabilitados. Va encima del
+ * color de fondo: se usa junto con bg-white (class="rayado-deshabilitado bg-white").
+ */
+@utility rayado-deshabilitado {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-deshabilitado-claro) 0 8px,
+    transparent 8px 16px
+  );
+}
+
 @layer base {
   body {
     @apply bg-concreto font-sans text-asfalto antialiased;

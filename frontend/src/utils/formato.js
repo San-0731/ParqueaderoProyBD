@@ -72,6 +72,15 @@ export function formatearFechaHora(iso) {
   return fecha ? `${formatoFecha.format(fecha)} ${formatoHora.format(fecha)}` : SIN_DATO;
 }
 
+/**
+ * Solo la hora: "2026-11-03T15:45:00" → "3:45 p. m.". También acepta un Date (por ejemplo,
+ * la hora en que se actualizó una pantalla).
+ */
+export function formatearHora(valor) {
+  const fecha = valor instanceof Date ? valor : aFecha(valor);
+  return fecha && !Number.isNaN(fecha.getTime()) ? formatoHora.format(fecha) : SIN_DATO;
+}
+
 /** 135 → "2 h 15 min"; 60 → "1 h"; 59 → "59 min". */
 export function formatearDuracion(minutos) {
   if (minutos === null || minutos === undefined || !Number.isFinite(Number(minutos))) {

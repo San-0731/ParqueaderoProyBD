@@ -76,6 +76,35 @@ if (error) {
 if (datos.length === 0) return <EstadoVacio titulo="No hay vehículos dentro" />;
 ```
 
+Para que una pantalla se actualice sola, usa `useIntervalo` (`frontend/src/hooks/`):
+
+```jsx
+useIntervalo(() => {
+  if (!document.hidden) recargar(); // con la pestaña oculta no se consulta
+}, 30_000);
+```
+
+## Organización de las pantallas
+
+Una pantalla sencilla es un archivo en `pages/`. Si la pantalla necesita varios archivos, va en
+su propia carpeta. Por ejemplo, `pages/tablero/` contiene:
+- la pantalla (`Tablero.jsx`);
+- sus piezas (`LetreroCupos.jsx`, `TarjetaEspacio.jsx`…);
+- las funciones puras sin React (`datosTablero.js`), que son las más fáciles de probar.
+
+## "Pintura de piso" (tablero de espacios)
+
+En el tablero, cada espacio se parece al cajón tal como se ve en el parqueadero:
+
+| Estado | Aspecto | Clases |
+|---|---|---|
+| Libre | Línea pintada punteada, como un cajón vacío (la misma idea que `EstadoVacio`) | `border-2 border-dashed border-libre bg-white` |
+| Ocupado | Fondo rojo claro con la `Placa` del vehículo | `border-ocupado/35 bg-ocupado-claro` |
+| Deshabilitado | Rayas diagonales de "zona de no parquear" | `rayado-deshabilitado bg-white` |
+
+`rayado-deshabilitado` es una utilidad propia definida con `@utility` en `index.css`. Si otra
+pantalla necesita mostrar un espacio fuera de servicio, se reutiliza esta clase.
+
 ## Forma y espacio
 
 - **Sombras solo en lo que flota** (modal y avisos). Las tarjetas llevan borde, no sombra.
