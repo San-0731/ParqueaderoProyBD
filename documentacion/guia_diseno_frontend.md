@@ -92,6 +92,36 @@ su propia carpeta. Por ejemplo, `pages/tablero/` contiene:
 - sus piezas (`LetreroCupos.jsx`, `TarjetaEspacio.jsx`…);
 - las funciones puras sin React (`datosTablero.js`), que son las más fáciles de probar.
 
+Los componentes del dominio que usan varias pantallas van en `components/<tema>/`. Por ejemplo,
+`components/vehiculos/` tiene:
+
+| Componente | Uso |
+|---|---|
+| `TarjetaVehiculo` | Datos del vehículo y su propietario |
+| `FormularioVehiculo` | Registro rápido de un vehículo con su propietario; la placa llega por prop |
+| `SeccionPropietario` | Búsqueda de un propietario por documento o registro de uno nuevo |
+| `validaciones.js` | Los mismos límites y mensajes del backend, para avisar antes de enviar |
+
+Las funciones de formato que comparten varias pantallas van en `utils/`. Por ejemplo,
+`utils/espacio.js` tiene `codigoEspacio` ("A-01") y `nombreEspacio` ("A-01, piso 1").
+
+## Flujo por pasos con resumen fijo (entrada; sirve también para la salida)
+
+- **Pasos numerados.** Cada paso es una `Tarjeta` cuyo título usa `TituloPaso`
+  (`pages/entrada/`): un número en un cuadrito asfalto. Solo se numera lo que de verdad es una
+  secuencia.
+- **Paso inactivo.** Un paso que todavía no se puede usar dice por qué. Por ejemplo: "Primero
+  busca el vehículo…".
+- **Resumen fijo.** Va a la derecha en escritorio (`lg:sticky lg:top-8`) y al final en celular.
+  Lleva lo que se va a guardar y el botón final grande.
+- **Botón deshabilitado.** Siempre explica qué falta, con un texto unido por
+  `aria-describedby`: "Falta elegir un espacio.".
+- **Sin efectos.** Lo que se muestra se calcula en una función pura (`calcularVista` en
+  `datosEntrada.js`) a partir del estado. Así no hay efectos que sincronizar.
+- **Opciones para tocar.** Son radios nativos ocultos (`sr-only`) dentro de un `<label>`
+  estilizado, con `has-checked:` y `has-focus-visible:`. Las flechas del teclado funcionan sin
+  código extra.
+
 ## "Pintura de piso" (tablero de espacios)
 
 En el tablero, cada espacio se parece al cajón tal como se ve en el parqueadero:

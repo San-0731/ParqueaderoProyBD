@@ -3,6 +3,7 @@
 import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
+import { codigoEspacio } from '../../utils/espacio.js';
 
 /**
  * Hace las 3 consultas del tablero en paralelo (Promise.all: el tiempo total es el de la más
@@ -18,11 +19,6 @@ export async function cargarTablero() {
     listarActivos(),
   ]);
   return { espacios, ocupacion, activos, actualizado: new Date() };
-}
-
-/** Código corto que se pinta en el espacio: zona y número, { zona: 'A', numero: '01' } → "A-01". */
-export function codigoEspacio({ zona, numero }) {
-  return `${zona}-${numero}`;
 }
 
 /**
