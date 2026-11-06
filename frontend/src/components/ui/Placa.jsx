@@ -2,6 +2,7 @@ import { formatearPlaca } from '../../utils/identificador.js';
 
 const TAMANOS = {
   normal: 'px-2 py-0.5 text-xl',
+  mediano: 'px-3 py-0.5 text-3xl',
   grande: 'px-4 py-1 text-5xl',
 };
 
@@ -11,6 +12,7 @@ const TAMANOS = {
  * muestre en pantalla debe usar este componente.
  *
  * <Placa identificador="KLM234" />             →  KLM 234
+ * <Placa identificador="ABC12D" tamano="mediano" /> (resúmenes en columnas angostas)
  * <Placa identificador="ABC12D" tamano="grande" /> (liquidación, recibo)
  */
 function Placa({ identificador, tamano = 'normal' }) {

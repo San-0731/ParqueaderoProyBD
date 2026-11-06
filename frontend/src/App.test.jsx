@@ -5,13 +5,27 @@ import App from './App.jsx';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 
 // Ninguna pantalla debe llamar al backend real: las consultas quedan pendientes para siempre
-// (el indicador del servidor y el tablero de la raíz se quedan en "cargando").
+// (el indicador del servidor, el tablero y la entrada se quedan en "cargando").
 // vi.hoisted: vi.mock se mueve al inicio del archivo, así que la función también debe ir ahí.
 const { pendiente } = vi.hoisted(() => ({ pendiente: () => vi.fn(() => new Promise(() => {})) }));
 vi.mock('./api/salud.js', () => ({ consultarSalud: pendiente() }));
 vi.mock('./api/espacios.js', () => ({ listarEspacios: pendiente() }));
 vi.mock('./api/reportes.js', () => ({ consultarOcupacion: pendiente() }));
-vi.mock('./api/registros.js', () => ({ listarActivos: pendiente() }));
+vi.mock('./api/registros.js', () => ({
+  listarActivos: pendiente(),
+  registrarEntrada: pendiente(),
+}));
+vi.mock('./api/catalogos.js', () => ({
+  listarTiposVehiculo: pendiente(),
+  listarMarcas: pendiente(),
+  listarModelos: pendiente(),
+}));
+vi.mock('./api/vehiculos.js', () => ({ listarVehiculos: pendiente(), crearVehiculo: pendiente() }));
+vi.mock('./api/clientes.js', () => ({
+  obtenerCliente: pendiente(),
+  listarClientes: pendiente(),
+  crearCliente: pendiente(),
+}));
 
 /** Dibuja la app completa empezando en la ruta indicada (MemoryRouter simula la URL). */
 function renderizarEn(ruta) {

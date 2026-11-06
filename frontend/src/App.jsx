@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router';
 import Layout from './components/layout/Layout.jsx';
-import Entrada from './pages/Entrada.jsx';
+import Entrada from './pages/entrada/Entrada.jsx';
 import Espacios from './pages/Espacios.jsx';
 import Historial from './pages/Historial.jsx';
 import Liquidacion from './pages/Liquidacion.jsx';

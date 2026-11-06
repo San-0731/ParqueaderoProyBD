@@ -4,7 +4,6 @@ import { consultarOcupacion } from '../../api/reportes.js';
 import {
   agruparPorPisoYZona,
   cargarTablero,
-  codigoEspacio,
   estadoEspacio,
   tipoElegido,
   totalGeneral,
@@ -33,12 +32,6 @@ describe('cargarTablero', () => {
     listarActivos.mockResolvedValue(ACTIVOS);
 
     await expect(cargarTablero()).rejects.toThrow('sin conexión');
-  });
-});
-
-describe('codigoEspacio', () => {
-  it('une la zona y el número', () => {
-    expect(codigoEspacio({ zona: 'A', numero: '01' })).toBe('A-01');
   });
 });
 
