@@ -6,11 +6,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Acceso a datos de la tabla {@code modelo} (catálogo de solo lectura).
+ * Acceso a datos de la tabla {@code modelo}. Desde la Fase 5 el DBA también
+ * puede agregar registros (pestaña Sistema).
  * Recibe la {@link Connection} y no la cierra.
  */
 public final class ModeloDAO {
@@ -44,6 +46,20 @@ public final class ModeloDAO {
             }
         }
         return modelos;
+    }
+
+    /** Inserta un modelo de la marca y devuelve su id. */
+    public long insertar(Connection conexion, long idMarca, String nombre) throws SQLException {
+        try (PreparedStatement insercion = conexion.prepareStatement(
+                "INSERT INTO modelo (id_marca, nombre) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setLong(1, idMarca);
+            insercion.setString(2, nombre);
+            insercion.executeUpdate();
+            try (ResultSet llaves = insercion.getGeneratedKeys()) {
+                llaves.next();
+                return llaves.getLong(1);
+            }
+        }
     }
 
     private Modelo mapear(ResultSet resultado) throws SQLException {

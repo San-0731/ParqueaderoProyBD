@@ -15,6 +15,7 @@ import com.parqueadero.dao.TarifaDAO;
 import com.parqueadero.dao.TipoVehiculoDAO;
 import com.parqueadero.dao.UsuarioDAO;
 import com.parqueadero.dao.VehiculoDAO;
+import com.parqueadero.dao.ZonaDAO;
 import com.parqueadero.handler.ApiHandler;
 import com.parqueadero.handler.AutenticacionHandler;
 import com.parqueadero.handler.CatalogoHandler;
@@ -26,6 +27,7 @@ import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.UsuarioHandler;
 import com.parqueadero.handler.VehiculoHandler;
+import com.parqueadero.handler.ZonaHandler;
 import com.parqueadero.model.Rol;
 import com.parqueadero.service.AutenticacionService;
 import com.parqueadero.service.CatalogoService;
@@ -36,6 +38,7 @@ import com.parqueadero.service.ReporteService;
 import com.parqueadero.service.SalidaService;
 import com.parqueadero.service.UsuarioService;
 import com.parqueadero.service.VehiculoService;
+import com.parqueadero.service.ZonaService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
 
@@ -141,6 +144,8 @@ public final class Servidor {
                 new TarifaDAO(), new MetodoPagoDAO(), new PagoDAO(), registroService));
         ReporteHandler reportes = new ReporteHandler(
                 new ReporteService(conexionBD, new ReporteDAO()));
+        ZonaHandler zonas = new ZonaHandler(
+                new ZonaService(conexionBD, new ZonaDAO(), new EspacioDAO()));
         UsuarioHandler usuarios = new UsuarioHandler(
                 new UsuarioService(conexionBD, new UsuarioDAO(), new SesionDAO()));
 
@@ -170,6 +175,9 @@ public final class Servidor {
                 .get("/api/tarifas/vigente", operador, catalogos::tarifasVigentes)
                 .get("/api/marcas", operador, catalogos::marcas)
                 .get("/api/modelos", operador, catalogos::modelos)
+                // Agregar marcas y modelos es del DBA (pestaña Sistema).
+                .post("/api/marcas", dba, catalogos::crearMarca)
+                .post("/api/modelos", dba, catalogos::crearModelo)
 
                 .get("/api/clientes", operador, clientes::listar)
                 .get("/api/clientes/{id}", operador, clientes::buscarPorId)
@@ -180,6 +188,12 @@ public final class Servidor {
                 .get("/api/espacios", operador, espacios::listar)
                 .get("/api/espacios/{id}", operador, espacios::buscarPorId)
                 .patch("/api/espacios/{id}/habilitado", administrador, espacios::cambiarHabilitado)
+
+                // Zonas: todos las consultan; crear zonas (y con ellas pisos nuevos) y
+                // agregarles espacios es del DBA.
+                .get("/api/zonas", operador, zonas::listar)
+                .post("/api/zonas", dba, zonas::crear)
+                .post("/api/zonas/{id}/espacios", dba, zonas::agregarEspacios)
 
                 // /registros/activos tiene prioridad sobre /registros/{id}: el
                 // Router prefiere el segmento literal sobre el parámetro.

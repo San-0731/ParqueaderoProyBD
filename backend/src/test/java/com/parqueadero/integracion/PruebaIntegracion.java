@@ -73,6 +73,9 @@ public abstract class PruebaIntegracion {
     private final List<Long> propietariosCreados = new ArrayList<>();
     private final List<Long> espaciosCreados = new ArrayList<>();
     private final List<Long> usuariosCreados = new ArrayList<>();
+    private final List<Long> zonasCreadas = new ArrayList<>();
+    private final List<Long> modelosCreados = new ArrayList<>();
+    private final List<Long> marcasCreadas = new ArrayList<>();
 
     /**
      * Iteraciones de PBKDF2 de los usuarios de prueba: pocas, para que crear
@@ -307,6 +310,26 @@ public abstract class PruebaIntegracion {
         vehiculosCreados.add(idVehiculo);
     }
 
+    /** Anota un espacio creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
+    protected void registrarEspacioCreado(long idEspacio) {
+        espaciosCreados.add(idEspacio);
+    }
+
+    /** Anota una zona creada por la API para borrarla al final (después de sus espacios). */
+    protected void registrarZonaCreada(long idZona) {
+        zonasCreadas.add(idZona);
+    }
+
+    /** Anota una marca creada por la API para borrarla al final (después de sus modelos). */
+    protected void registrarMarcaCreada(long idMarca) {
+        marcasCreadas.add(idMarca);
+    }
+
+    /** Anota un modelo creado por la API para borrarlo al final. */
+    protected void registrarModeloCreado(long idModelo) {
+        modelosCreados.add(idModelo);
+    }
+
     /** Anota un usuario creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
     protected void registrarUsuarioCreado(long idUsuario) {
         usuariosCreados.add(idUsuario);
@@ -320,14 +343,16 @@ public abstract class PruebaIntegracion {
     /**
      * Borra lo que creó la prueba, en orden inverso a las llaves foráneas:
      * pagos → registros de parqueo (de sus vehículos o en sus espacios) →
-     * vehículos → propietarios → espacios → sesiones → usuarios. Se ejecuta solo después de cada
+     * vehículos → propietarios → espacios → zonas → modelos → marcas →
+     * sesiones → usuarios. Se ejecuta solo después de cada
      * prueba; si los datos ya se deshicieron con {@code rollback()}, los DELETE
      * no encuentran nada y no pasa nada.
      */
     @AfterEach
     protected void limpiarDatosCreados() throws SQLException {
         if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()
-                && usuariosCreados.isEmpty()) {
+                && usuariosCreados.isEmpty() && zonasCreadas.isEmpty() && modelosCreados.isEmpty()
+                && marcasCreadas.isEmpty()) {
             return;
         }
         // Registros de parqueo de la prueba: los de sus vehículos o los hechos en sus espacios.
@@ -356,6 +381,9 @@ public abstract class PruebaIntegracion {
                 borrarPorIds(conexion, "vehiculo", "id_vehiculo", vehiculosCreados);
                 borrarPorIds(conexion, "cliente", "id_cliente", propietariosCreados);
                 borrarPorIds(conexion, "espacio", "id_espacio", espaciosCreados);
+                borrarPorIds(conexion, "zona", "id_zona", zonasCreadas);
+                borrarPorIds(conexion, "modelo", "id_modelo", modelosCreados);
+                borrarPorIds(conexion, "marca", "id_marca", marcasCreadas);
                 borrarPorIds(conexion, "sesion", "id_usuario", usuariosCreados);
                 borrarPorIds(conexion, "usuario", "id_usuario", usuariosCreados);
                 conexion.commit();
@@ -368,6 +396,9 @@ public abstract class PruebaIntegracion {
         propietariosCreados.clear();
         espaciosCreados.clear();
         usuariosCreados.clear();
+        zonasCreadas.clear();
+        modelosCreados.clear();
+        marcasCreadas.clear();
     }
 
     private static void borrarPorIds(Connection conexion, String tabla, String columna, List<Long> ids)
