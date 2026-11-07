@@ -2,6 +2,8 @@ import { cerrarSesion, consultarUsuarioActual, iniciarSesion } from './autentica
 import * as cliente from './cliente.js';
 import { consultarIngresos, consultarOcupacion } from './reportes.js';
 import {
+  crearMarca,
+  crearModelo,
   listarMarcas,
   listarMetodosPago,
   listarModelos,
@@ -19,6 +21,7 @@ import {
   registrarSalida,
 } from './registros.js';
 import { consultarSalud } from './salud.js';
+import { agregarEspaciosAZona, crearZona, listarZonas } from './zonas.js';
 import {
   actualizarUsuario,
   cambiarClaveUsuario,
@@ -53,6 +56,26 @@ const casos = [
   ['consultarUsuarioActual', () => consultarUsuarioActual(), 'get', ['/auth/yo']],
 
   ['listarUsuarios', () => listarUsuarios(), 'get', ['/usuarios']],
+  ['listarZonas', () => listarZonas(), 'get', ['/zonas']],
+  [
+    'crearZona',
+    () => crearZona({ piso: '3', letra: 'D', idTipo: 1 }),
+    'post',
+    ['/zonas', { piso: '3', letra: 'D', idTipo: 1 }],
+  ],
+  [
+    'agregarEspaciosAZona',
+    () => agregarEspaciosAZona(5, 4),
+    'post',
+    ['/zonas/5/espacios', { cantidad: 4 }],
+  ],
+  ['crearMarca', () => crearMarca('Kia'), 'post', ['/marcas', { nombre: 'Kia' }]],
+  [
+    'crearModelo',
+    () => crearModelo(3, 'Picanto'),
+    'post',
+    ['/modelos', { idMarca: 3, nombre: 'Picanto' }],
+  ],
   [
     'crearUsuario',
     () => crearUsuario({ nombreUsuario: 'ana', rol: 'OPERADOR' }),
