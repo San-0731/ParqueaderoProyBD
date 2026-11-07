@@ -36,6 +36,20 @@ Proyecto académico de la materia Bases de Datos.
   test:, chore:
 - Ramas: feature/<descripcion> o fix/<descripcion>, creadas desde develop.
 
+## Frontend (reglas que ya se siguen)
+- Diseño, colores y componentes: documentacion/guia_diseno_frontend.md. Toda
+  placa o código de vehículo se muestra con el componente <Placa>.
+- La URL del backend solo va en VITE_API_URL (frontend/.env.local); las
+  llamadas a la API solo salen de frontend/src/api/.
+- El tipo de vehículo sale de la placa (backend: util/TipoPorPlaca.java;
+  frontend: utils/tipoVehiculo.js; deben tener la misma regla). La placa y el
+  tipo no se pueden editar.
+- Todo tipo de vehículo que se muestre pasa por nombreTipoVisible() ("Camión"
+  se ve como "Camión de carga pesada"; en la base sigue siendo "Camión").
+- El frontend no calcula cobros: usa los valores de la liquidación del backend.
+- npm test -- --run incluye la revisión de accesibilidad con axe-core
+  (src/accesibilidad.test.jsx).
+
 ## Comandos
 - Frontend (desde frontend/; la primera vez: cp .env.example .env.local):
   npm install, npm run dev (http://localhost:5173), npm test -- --run
