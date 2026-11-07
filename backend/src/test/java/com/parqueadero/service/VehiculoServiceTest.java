@@ -5,13 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import com.parqueadero.exception.DatosInvalidosException;
+import com.parqueadero.model.TipoVehiculo;
 import com.parqueadero.model.Vehiculo;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pruebas de las validaciones de {@link VehiculoService#validar(Vehiculo)}.
- * No necesitan base de datos: {@code validar} no abre conexiones.
+ * Pruebas de las validaciones de {@link VehiculoService}: {@code validar},
+ * {@code revisarTipoEnviado} y {@code revisarCambiosNoPermitidos}. No necesitan
+ * base de datos: ninguno de esos métodos abre conexiones.
  */
 class VehiculoServiceTest {
 
@@ -69,10 +73,9 @@ class VehiculoServiceTest {
     }
 
     @Test
-    void validar_sinTipoLanzaDatosInvalidos() {
-        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
-                () -> VehiculoService.validar(vehiculo("ABC123", null, 1L, "Rojo")));
-        assertEquals("El tipo de vehículo (idTipo) es obligatorio.", error.getMessage());
+    void validar_sinTipoPasa() {
+        // El tipo ya no es obligatorio: VehiculoService.crear lo asigna según la placa.
+        assertNull(VehiculoService.validar(vehiculo("ABC123", null, 1L, "Rojo")).idTipo());
     }
 
     @Test
@@ -126,8 +129,63 @@ class VehiculoServiceTest {
 
         String mensaje = error.getMessage();
         assertTrue(mensaje.contains("identificador"), mensaje);
-        assertTrue(mensaje.contains("idTipo"), mensaje);
         assertTrue(mensaje.contains("idCliente"), mensaje);
         assertTrue(mensaje.contains("color"), mensaje);
+    }
+
+    // ----- Tipo según la placa (al registrar) -----
+
+    private static final TipoVehiculo MOTO = new TipoVehiculo(1L, "Moto");
+
+    @Test
+    void revisarTipoEnviado_sinTipoPasa() {
+        assertDoesNotThrow(() -> VehiculoService.revisarTipoEnviado("ABC12D", null, MOTO));
+    }
+
+    @Test
+    void revisarTipoEnviado_mismoTipoPasa() {
+        assertDoesNotThrow(() -> VehiculoService.revisarTipoEnviado("ABC12D", 1L, MOTO));
+    }
+
+    @Test
+    void revisarTipoEnviado_otroTipoLanzaDatosInvalidos() {
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> VehiculoService.revisarTipoEnviado("ABC12D", 3L, MOTO));
+        assertEquals("Por su placa, ABC12D es Moto (idTipo 1); no se puede registrar con idTipo 3.",
+                error.getMessage());
+    }
+
+    // ----- Placa y tipo no se cambian (al actualizar) -----
+
+    /** Vehículo como está guardado: KLM234, carro (idTipo 3). */
+    private static final Vehiculo GUARDADO = new Vehiculo(1L, "KLM234", 3L, 5L, 1L, "Gris", 2020);
+
+    @Test
+    void revisarCambios_sinPlacaNiTipoPasa() {
+        Vehiculo datos = new Vehiculo(null, null, null, 6L, 2L, "Azul", 2021);
+        assertDoesNotThrow(() -> VehiculoService.revisarCambiosNoPermitidos(GUARDADO, datos));
+    }
+
+    @Test
+    void revisarCambios_mismaPlacaEscritaDistintoPasa() {
+        // "klm-234" normalizado es KLM234: no es un cambio.
+        Vehiculo datos = new Vehiculo(null, "klm-234", 3L, 6L, 2L, null, null);
+        assertDoesNotThrow(() -> VehiculoService.revisarCambiosNoPermitidos(GUARDADO, datos));
+    }
+
+    @Test
+    void revisarCambios_otraPlacaLanzaDatosInvalidos() {
+        Vehiculo datos = new Vehiculo(null, "KLM243", null, 6L, 2L, null, null);
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> VehiculoService.revisarCambiosNoPermitidos(GUARDADO, datos));
+        assertEquals("La placa no se puede cambiar.", error.getMessage());
+    }
+
+    @Test
+    void revisarCambios_otroTipoLanzaDatosInvalidos() {
+        Vehiculo datos = new Vehiculo(null, null, 1L, 6L, 2L, null, null);
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> VehiculoService.revisarCambiosNoPermitidos(GUARDADO, datos));
+        assertEquals("El tipo no se puede cambiar: sale de la placa.", error.getMessage());
     }
 }

@@ -94,7 +94,7 @@ public class Main {
     private static Router registrarRutas(ConexionBD conexionBD) {
         SaludHandler salud = new SaludHandler(conexionBD);
         VehiculoHandler vehiculos = new VehiculoHandler(
-                new VehiculoService(conexionBD, new VehiculoDAO()));
+                new VehiculoService(conexionBD, new VehiculoDAO(), new TipoVehiculoDAO()));
         CatalogoHandler catalogos = new CatalogoHandler(new CatalogoService(conexionBD,
                 new TipoVehiculoDAO(), new MetodoPagoDAO(), new TarifaDAO(), new MarcaDAO(),
                 new ModeloDAO()));

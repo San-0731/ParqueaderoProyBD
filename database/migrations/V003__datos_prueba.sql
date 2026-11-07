@@ -126,8 +126,8 @@ INSERT INTO vehiculo (identificador, id_tipo, id_modelo, id_cliente, color, anio
     ('XYZ78G', @tipo_moto,
         (SELECT id_modelo FROM modelo WHERE nombre = 'Pulsar NS 200'),
         (SELECT id_cliente FROM cliente WHERE documento = '1098765432'), 'Azul', 2020),
-    -- Camión
-    ('TSR482', @tipo_camion,
+    -- Camión de carga pesada (placa de remolque: R y 5 números; ver TipoPorPlaca)
+    ('R48213', @tipo_camion,
         (SELECT id_modelo FROM modelo WHERE nombre = 'NHR'),
         (SELECT id_cliente FROM cliente WHERE documento = '80123654'), 'Blanco', 2017),
     -- Bicicletas: una identificada por número de marco y otra por código
@@ -206,9 +206,9 @@ INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
     (@registro, @efectivo, 20000.00, '2026-09-21 18:05:00', NULL),
     (@registro, @nequi,    34000.00, '2026-09-21 18:05:00', 'NEQ-0002');
 
--- P07 · TSR482 (camión) en 2-C-01 · 160 min -> 3 h x 8.000 = 24.000 · PSE
+-- P07 · R48213 (camión) en 2-C-01 · 160 min -> 3 h x 8.000 = 24.000 · PSE
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada, salida, minutos_totales, valor_total, estado) VALUES (
-    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'TSR482'),
+    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'R48213'),
     (SELECT id_espacio FROM espacio WHERE piso = '2' AND zona = 'C' AND numero = '01'),
     '2026-09-22 05:30:00', '2026-09-22 08:10:00', 160, 24000.00, 'PAGO');
 SET @registro = LAST_INSERT_ID();
@@ -253,11 +253,11 @@ SET @registro = LAST_INSERT_ID();
 INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
     (@registro, @efectivo, 4500.00, '2026-09-28 08:00:00', NULL);
 
--- P12 · TSR482 (camión) en 2-C-02 · pasa la noche: entra el 30-sep y sale el
+-- P12 · R48213 (camión) en 2-C-02 · pasa la noche: entra el 30-sep y sale el
 -- 1-oct. Se cobra con la tarifa antigua porque cuenta la fecha de ENTRADA.
 -- 870 min -> 15 h x 8.000 = 120.000 · PSE
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada, salida, minutos_totales, valor_total, estado) VALUES (
-    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'TSR482'),
+    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'R48213'),
     (SELECT id_espacio FROM espacio WHERE piso = '2' AND zona = 'C' AND numero = '02'),
     '2026-09-30 18:00:00', '2026-10-01 08:30:00', 870, 120000.00, 'PAGO');
 SET @registro = LAST_INSERT_ID();
@@ -352,9 +352,9 @@ INSERT INTO pago (id_registro, id_metodo, monto, fecha_pago, referencia) VALUES
 
 -- ===== Semana del 19 de octubre (tarifa actual) =====
 
--- P22 · TSR482 (camión) en 2-C-01 · 105 min -> 2 h x 9.000 = 18.000 · Nequi
+-- P22 · R48213 (camión) en 2-C-01 · 105 min -> 2 h x 9.000 = 18.000 · Nequi
 INSERT INTO registro_parqueo (id_vehiculo, id_espacio, entrada, salida, minutos_totales, valor_total, estado) VALUES (
-    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'TSR482'),
+    (SELECT id_vehiculo FROM vehiculo WHERE identificador = 'R48213'),
     (SELECT id_espacio FROM espacio WHERE piso = '2' AND zona = 'C' AND numero = '01'),
     '2026-10-20 06:00:00', '2026-10-20 07:45:00', 105, 18000.00, 'PAGO');
 SET @registro = LAST_INSERT_ID();
