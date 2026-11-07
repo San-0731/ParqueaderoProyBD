@@ -54,7 +54,8 @@ Proyecto académico de la materia Bases de Datos.
 - Frontend (desde frontend/; la primera vez: cp .env.example .env.local):
   npm install, npm run dev (http://localhost:5173), npm test -- --run
   (pruebas Vitest), npm run test:cobertura (cobertura, reporte en coverage/),
-  npm run build, npm run lint (ESLint) y npm run format
+  npm run test:e2e (Playwright, e2e/; requiere MySQL y el backend con
+  DB_NAME=parqueadero_test encendidos), npm run build, npm run lint (ESLint) y npm run format
   (Prettier)
 - Backend: cd backend && mvn clean package (compila y corre las pruebas JUnit)
   y java -jar target/parqueadero-backend.jar (requiere MySQL encendido;

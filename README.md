@@ -296,6 +296,7 @@ La URL del backend solo se define en `VITE_API_URL`; en el código no hay direcc
 | Integración | `./database/scripts/recrear-bd-pruebas.sh` y luego `cd backend && mvn verify -Pintegracion` | Todas las pruebas JUnit, incluidas las que usan MySQL real (base de datos y API) |
 | Frontend | `cd frontend && npm test -- --run` | Pruebas de Vitest y Testing Library de cada pantalla, sus funciones y la accesibilidad (axe-core) |
 | Cobertura del frontend | `cd frontend && npm run test:cobertura` | Las mismas pruebas, con el porcentaje de código que ejecutan (no se persigue un número) |
+| Extremo a extremo (E2E) | `cd frontend && npm run test:e2e` | Flujos completos en un Chromium real con Playwright (ver abajo) |
 | API a mano | [`backend/api.http`](backend/api.http) con REST Client | Cada petición dice el resultado esperado |
 | Base de datos | [`documentacion/guia_pruebas_base_datos.md`](documentacion/guia_pruebas_base_datos.md) | Consultas, vistas y triggers |
 
@@ -319,6 +320,38 @@ cd backend && mvn verify -Pintegracion     # pruebas unitarias + integración co
 - Sin Docker (por ejemplo en GitHub Actions):
   `MODO_MYSQL=directo DB_HOST=127.0.0.1 DB_PORT=3306 ./database/scripts/recrear-bd-pruebas.sh`
   usa el cliente `mysql` instalado en la máquina.
+
+### Pruebas de extremo a extremo (E2E)
+
+Un Chromium real recorre la app con [Playwright](https://playwright.dev): registra un
+carro y su propietario, lo ve en el tablero, cobra la salida con Nequi, revisa el recibo y
+el historial, paga en efectivo, comprueba los mensajes de error y abre todas las pantallas
+sin errores en la consola. Las pruebas están en `frontend/e2e/`.
+
+La primera vez, instala el navegador (solo Chromium):
+
+```bash
+cd frontend && npx playwright install chromium
+```
+
+Antes de cada ejecución deben estar encendidos MySQL y el backend **apuntando a la base de
+pruebas** (si no, los datos de prueba quedarían en la base de desarrollo). Playwright
+enciende el servidor de Vite solo:
+
+```bash
+./database/scripts/recrear-bd-pruebas.sh                                    # base limpia (opcional)
+cd backend && DB_NAME=parqueadero_test java -jar target/parqueadero-backend.jar   # en otra terminal
+cd frontend && npm run test:e2e
+```
+
+- Tardan unos 2 minutos: el backend no cobra el primer minuto de parqueo, así que las
+  pruebas que pagan esperan algo más de un minuto real (corren en paralelo).
+- Cada ejecución usa placas y documentos nuevos y saca los vehículos que entró, así que se
+  puede repetir sin recrear la base.
+- Si una prueba falla, Playwright guarda captura, video y traza en `frontend/test-results/`
+  y el reporte en `frontend/playwright-report/` (`npx playwright show-report`).
+- No corren en GitHub Actions (necesitan MySQL, backend y frontend a la vez): se ejecutan en
+  local antes de fusionar a `main`.
 
 Las reglas visuales y los componentes del frontend están en
 [`documentacion/guia_diseno_frontend.md`](documentacion/guia_diseno_frontend.md).
