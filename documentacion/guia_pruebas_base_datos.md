@@ -131,9 +131,19 @@ Los datos de prueba cumplen esta regla. Por eso el camión de prueba tiene placa
 |---|---|---|---|
 | A1 | Consistencia de los datos | Abrir y ejecutar `database/pruebas/01_consistencia_datos.sql` | En la consulta 3, **todas** las filas con `cantidad = 0`; los conteos iguales a la sección 2 |
 | A2 | Reglas (59 casos) | `bash database/pruebas/02_probar_reglas.sh` (en Linux, macOS o Git Bash) | Termina con `TODAS LAS PRUEBAS PASARON` y ninguna línea `FALLO` |
+| A3 | Reglas en JUnit (restricciones, registros activos, triggers y vistas) | `./database/scripts/recrear-bd-pruebas.sh` y luego `cd backend && mvn verify -Pintegracion` | `BUILD SUCCESS` sin pruebas fallidas |
 
 Si A2 muestra `FALLO`, la línea dice qué código se esperaba y cuál salió.
 Cópiala en el reporte.
+
+A3 corre contra la base aparte `parqueadero_test` (no toca `parqueadero`) y
+cada prueba se deshace con `rollback()`. Las clases están en
+`backend/src/test/java/com/parqueadero/bd/`: `RestriccionesTest` (UNIQUE,
+CHECK y llaves foráneas), `RegistrosActivosTest` (un vehículo y un espacio con
+un solo registro activo), `TriggersTest` (normalizar la placa, tipo del espacio
+y espacio habilitado) y `VistasTest` (las cuatro vistas). Cada prueba explica
+en su comentario la regla que comprueba; si una falla, Maven muestra el código
+de error de MySQL y la restricción esperada.
 
 ---
 
