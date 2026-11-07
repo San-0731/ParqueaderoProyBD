@@ -167,7 +167,7 @@ automáticamente (ver `.vscode/extensions.json`).
 │       ├── hooks/      # useConsulta (consultas a la API) y useIntervalo (actualizar solo)
 │       ├── pages/      # Una carpeta por pantalla, con sus piezas y sus funciones puras
 │       └── utils/      # Formato de pesos y fechas, placas, tipos de vehículo, rangos de fechas
-├── documentacion/      # Guías (Docker, diseño del frontend, pruebas de la base) y capturas
+├── documentacion/      # Guías (Docker, diseño del frontend, pruebas y CI, pruebas de la base) y capturas
 │   └── pruebas/        # Plan de pruebas manual, casos de prueba y matriz de trazabilidad
 ├── .github/            # Integración continua (workflows/ci.yml) y plantilla de bugs
 ├── .vscode/            # Extensiones recomendadas para el equipo
@@ -216,6 +216,9 @@ se ejecutan en local antes de fusionar a `main`. Para que nadie fusione con el C
 en GitHub: **Settings → Branches → Add branch ruleset** (o *branch protection rule*) para
 `develop` y `main`, con **Require status checks to pass** y los checks `backend` y
 `frontend` marcados como obligatorios.
+
+La explicación detallada del CI (cada paso del workflow, cómo hacerlo obligatorio y cómo
+reproducirlo en local) está en [`documentacion/guia_pruebas_y_ci.md`](documentacion/guia_pruebas_y_ci.md).
 
 Los errores se reportan como *issues* con la plantilla **Reporte de bug**
 ([`.github/ISSUE_TEMPLATE/bug.md`](.github/ISSUE_TEMPLATE/bug.md)).
@@ -323,6 +326,7 @@ La URL del backend solo se define en `VITE_API_URL`; en el código no hay direcc
 | Extremo a extremo (E2E) | `cd frontend && npm run test:e2e` | Flujos completos en un Chromium real con Playwright (ver abajo) |
 | API a mano | [`backend/api.http`](backend/api.http) con REST Client | Cada petición dice el resultado esperado |
 | Base de datos | [`documentacion/guia_pruebas_base_datos.md`](documentacion/guia_pruebas_base_datos.md) | Consultas, vistas y triggers |
+| Guía completa | [`documentacion/guia_pruebas_y_ci.md`](documentacion/guia_pruebas_y_ci.md) | Todos los niveles de prueba, el CI de GitHub Actions paso a paso, cómo leer los resultados y qué hacer cuando falla |
 | Manuales (equipo de testing) | [`documentacion/pruebas/plan-de-pruebas.md`](documentacion/pruebas/plan-de-pruebas.md) | Casos contra el enunciado en [`casos-de-prueba.md`](documentacion/pruebas/casos-de-prueba.md) y su [matriz de trazabilidad](documentacion/pruebas/matriz-trazabilidad.md) |
 
 ### Pruebas de integración
