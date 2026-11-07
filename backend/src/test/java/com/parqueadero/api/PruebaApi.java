@@ -14,6 +14,7 @@ import com.parqueadero.model.Rol;
 import com.parqueadero.util.Json;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.io.IOException;
 import java.net.URI;
@@ -37,6 +38,13 @@ import java.util.Map;
  * {@link HttpClient} del JDK, y el JSON se lee con la clase {@link Json} del
  * proyecto.
  *
+ * <p>Todas las rutas, menos {@code /salud} y {@code /auth/login}, exigen
+ * sesión. Antes de cada prueba se crea un usuario ADMINISTRADOR y se inicia
+ * sesión con él: {@link #get}, {@link #post}, {@link #put} y {@link #patch}
+ * envían ese token. Para probar otro rol o ninguna sesión se usa
+ * {@link #enviar(String, String, String, String)} con el token que haga falta
+ * (o {@code null}).
+ *
  * <p>Los servicios confirman sus propias transacciones, así que aquí no hay
  * {@code rollback()}: cada prueba crea sus datos con identificadores únicos y
  * en espacios propios, y {@link PruebaIntegracion#limpiarDatosCreados()} los
@@ -47,6 +55,13 @@ abstract class PruebaApi extends PruebaIntegracion {
     private static Servidor servidor;
     private static HttpClient clienteHttp;
     private static String urlBase;
+
+    /**
+     * Token de la sesión de la prueba actual (un ADMINISTRADOR). Es estático
+     * porque los ayudantes de petición son estáticos; las pruebas corren una
+     * tras otra, así que no se pisan.
+     */
+    private static String tokenDeLaPrueba;
 
     /** Respuesta HTTP recibida: código de estado, cuerpo y cabeceras. */
     protected record RespuestaHttp(int estado, String cuerpo, HttpHeaders cabeceras) {
@@ -89,6 +104,17 @@ abstract class PruebaApi extends PruebaIntegracion {
         }
     }
 
+    /** Cada prueba empieza con su propia sesión de administrador (el usuario se borra al final). */
+    @BeforeEach
+    void iniciarSesionDeLaPrueba() {
+        tokenDeLaPrueba = tokenConRol(Rol.ADMINISTRADOR);
+    }
+
+    /** El token de la sesión de administrador de esta prueba. */
+    protected static String tokenDeLaPrueba() {
+        return tokenDeLaPrueba;
+    }
+
     // ------------------------------------------------------------ peticiones
 
     protected static RespuestaHttp get(String ruta) {
@@ -108,16 +134,17 @@ abstract class PruebaApi extends PruebaIntegracion {
     }
 
     /**
-     * Hace una petición a {@code /api + ruta}. Con {@code cuerpo} distinto de
-     * {@code null} lo envía como JSON.
+     * Hace una petición a {@code /api + ruta} con la sesión de administrador de
+     * la prueba. Con {@code cuerpo} distinto de {@code null} lo envía como JSON.
      */
     protected static RespuestaHttp enviar(String metodo, String ruta, String cuerpo) {
-        return enviar(metodo, ruta, cuerpo, null);
+        return enviar(metodo, ruta, cuerpo, tokenDeLaPrueba);
     }
 
     /**
-     * Igual que {@link #enviar(String, String, String)}, con el token de una
-     * sesión en {@code Authorization: Bearer <token>} (si no es {@code null}).
+     * Igual que {@link #enviar(String, String, String)}, pero con el token
+     * indicado en {@code Authorization: Bearer <token>}; con {@code null} va
+     * sin sesión.
      */
     protected static RespuestaHttp enviar(String metodo, String ruta, String cuerpo, String token) {
         HttpRequest.Builder peticion = HttpRequest.newBuilder(URI.create(urlBase + ruta))
