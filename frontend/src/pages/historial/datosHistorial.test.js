@@ -1,15 +1,11 @@
 import {
   consultaParaApi,
   contarParqueos,
-  describirRango,
-  esAtajoActivo,
   filtrarPorPlaca,
   filtrosDesdeUrl,
   filtrosParaUrl,
   paginar,
-  rangoDeAtajo,
   totalValor,
-  validarRango,
 } from './datosHistorial.js';
 import { HISTORIAL, VEINTICINCO } from './datosPrueba.js';
 
@@ -82,38 +78,6 @@ describe('filtrosParaUrl', () => {
   });
 });
 
-describe('atajos', () => {
-  it.each([
-    ['hoy', '2026-11-06', '2026-11-06'],
-    ['7', '2026-10-31', '2026-11-06'],
-    ['30', '2026-10-08', '2026-11-06'],
-    ['mes', '2026-11-01', '2026-11-06'],
-    ['todo', '', ''],
-  ])('%s va de "%s" a "%s"', (clave, desde, hasta) => {
-    expect(rangoDeAtajo(clave, HOY)).toEqual({ desde, hasta });
-  });
-
-  it('el atajo activo es el que coincide con las fechas', () => {
-    const filtros = { desde: '2026-10-31', hasta: '2026-11-06' };
-    expect(esAtajoActivo('7', filtros, HOY)).toBe(true);
-    expect(esAtajoActivo('30', filtros, HOY)).toBe(false);
-  });
-});
-
-describe('validarRango', () => {
-  it('"desde" posterior a "hasta" da el mismo mensaje que el backend', () => {
-    expect(validarRango('2026-10-31', '2026-10-01')).toBe(
-      "La fecha 'desde' (31/10/2026) no puede ser posterior a la fecha 'hasta' (01/10/2026).",
-    );
-  });
-
-  it('el mismo día, una sola fecha o ninguna son válidos', () => {
-    expect(validarRango('2026-10-01', '2026-10-01')).toBeNull();
-    expect(validarRango('2026-10-01', '')).toBeNull();
-    expect(validarRango('', '')).toBeNull();
-  });
-});
-
 describe('consultaParaApi', () => {
   it('envía fechas y método (como número) y omite los vacíos', () => {
     expect(consultaParaApi({ desde: '2026-10-01', hasta: '2026-10-31', idMetodo: '2' })).toEqual({
@@ -161,14 +125,6 @@ describe('paginar', () => {
 });
 
 describe('textos', () => {
-  it('describirRango', () => {
-    expect(describirRango({ desde: '2026-10-31', hasta: '2026-11-06' })).toBe(
-      'entre el 31/10/2026 y el 06/11/2026',
-    );
-    expect(describirRango({ desde: '2026-10-31', hasta: '' })).toBe('desde el 31/10/2026');
-    expect(describirRango({ desde: '', hasta: '' })).toBe('');
-  });
-
   it('contarParqueos', () => {
     expect(contarParqueos(1)).toBe('1 parqueo terminado');
     expect(contarParqueos(27)).toBe('27 parqueos terminados');

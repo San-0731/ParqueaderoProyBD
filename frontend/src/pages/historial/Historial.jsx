@@ -23,18 +23,15 @@ import {
 import { formatearPlaca } from '../../utils/identificador.js';
 import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 import FiltrosHistorial from './FiltrosHistorial.jsx';
+import { describirRango, hoyIso, rangoDeAtajo, validarRango } from '../../utils/rangosFechas.js';
 import {
   consultaParaApi,
   contarParqueos,
-  describirRango,
   filtrarPorPlaca,
   filtrosDesdeUrl,
   filtrosParaUrl,
-  hoyIso,
   paginar,
-  rangoDeAtajo,
   totalValor,
-  validarRango,
 } from './datosHistorial.js';
 
 /** Fecha arriba y hora debajo: la columna queda angosta y la tabla cabe en escritorio. */

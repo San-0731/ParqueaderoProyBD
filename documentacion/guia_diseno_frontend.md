@@ -204,6 +204,29 @@ borde-tirilla` en `index.css`) y separadores punteados. Al mostrarse, el foco va
   se calculan dentro de un `useMemo`. Si no, la regla `preserve-manual-memoization` los marca
   como "podrían cambiar".
 
+## Rango de fechas compartido
+
+- **Lógica:** el historial y los reportes usan `utils/rangosFechas.js` para los atajos, la
+  validación y la URL. Cada pantalla elige qué atajos muestra (`ATAJOS_HISTORIAL`,
+  `ATAJOS_REPORTES`).
+- **Componentes:**
+  - `components/filtros/CamposFechas` dibuja Desde y Hasta, con el error bajo Hasta;
+  - `AtajosFechas` dibuja los botones con `aria-pressed`.
+
+## Gráficos sin librería (`pages/reportes/`)
+
+- **Barras por día:**
+  - son divs de Tailwind y la altura va en porcentaje del día más alto (`alturaRelativa`);
+  - cada barra es un elemento enfocable con `role="img"` y `aria-label`. El mismo texto aparece
+    en un globo con `group-hover:` y `group-focus-visible:`, así que el valor se ve con el mouse y
+    con Tab;
+  - los días sin pagos se dibujan en cero (con hasta 62 días), para no esconder los huecos.
+- **Tabla debajo del gráfico:** es la versión accesible y la de las cifras exactas.
+- **Barras apiladas de ocupación:**
+  - van en rojo (`bg-ocupado`), verde (`bg-libre`) y rayas (`rayado-deshabilitado`), los mismos
+    colores del tablero;
+  - las cifras van escritas al lado, así la información no depende solo del color.
+
 ## "Pintura de piso" (tablero de espacios)
 
 En el tablero, cada espacio se parece al cajón tal como se ve en el parqueadero:
