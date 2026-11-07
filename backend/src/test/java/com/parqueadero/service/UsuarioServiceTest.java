@@ -47,4 +47,41 @@ class UsuarioServiceTest {
         assertThrows(DatosInvalidosException.class, () -> servicio.iniciarSesion(vacio, "clave-123"));
         assertThrows(DatosInvalidosException.class, () -> servicio.iniciarSesion("dba", vacio == null ? null : ""));
     }
+
+    @Test
+    void crearJuntaTodosLosErroresAntesDeIrALaBase() {
+        UsuarioService servicio = new UsuarioService(null, null, null);
+
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> servicio.crear("A", "", "JEFE", "123"));
+
+        assertEquals("El nombre de usuario debe tener de 3 a 30 caracteres: minúsculas sin tildes,"
+                + " números, punto o guion bajo (por ejemplo, ana.perez). El nombre completo es"
+                + " obligatorio. El rol debe ser OPERADOR, ADMINISTRADOR o DBA. La contraseña debe"
+                + " tener entre 8 y 100 caracteres.", error.getMessage());
+    }
+
+    @Test
+    void actualizarExigeElCampoActivo() {
+        UsuarioService servicio = new UsuarioService(null, null, null);
+
+        DatosInvalidosException error = assertThrows(DatosInvalidosException.class,
+                () -> servicio.actualizar(1, "Ana", "OPERADOR", null));
+
+        assertEquals("El campo activo es obligatorio (true o false).", error.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OPERADOR", "administrador", " Dba "})
+    void elRolSeLeeSinImportarMayusculas(String rol) {
+        UsuarioService.leerRol(rol);
+    }
+
+    @Test
+    void elNombreCompletoNoPuedeSerMuyLargo() {
+        assertEquals("Ana Pérez", UsuarioService.validarNombreCompleto("  Ana Pérez "));
+        UsuarioService.validarNombreCompleto("x".repeat(100));
+        assertThrows(DatosInvalidosException.class,
+                () -> UsuarioService.validarNombreCompleto("x".repeat(101)));
+    }
 }

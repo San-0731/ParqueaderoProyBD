@@ -20,6 +20,12 @@ import {
 } from './registros.js';
 import { consultarSalud } from './salud.js';
 import {
+  actualizarUsuario,
+  cambiarClaveUsuario,
+  crearUsuario,
+  listarUsuarios,
+} from './usuarios.js';
+import {
   actualizarVehiculo,
   crearVehiculo,
   listarVehiculos,
@@ -45,6 +51,26 @@ const casos = [
   ],
   ['cerrarSesion', () => cerrarSesion(), 'post', ['/auth/logout']],
   ['consultarUsuarioActual', () => consultarUsuarioActual(), 'get', ['/auth/yo']],
+
+  ['listarUsuarios', () => listarUsuarios(), 'get', ['/usuarios']],
+  [
+    'crearUsuario',
+    () => crearUsuario({ nombreUsuario: 'ana', rol: 'OPERADOR' }),
+    'post',
+    ['/usuarios', { nombreUsuario: 'ana', rol: 'OPERADOR' }],
+  ],
+  [
+    'actualizarUsuario',
+    () => actualizarUsuario(7, { rol: 'DBA' }),
+    'put',
+    ['/usuarios/7', { rol: 'DBA' }],
+  ],
+  [
+    'cambiarClaveUsuario',
+    () => cambiarClaveUsuario(7, 'clave-nueva'),
+    'put',
+    ['/usuarios/7/clave', { clave: 'clave-nueva' }],
+  ],
 
   [
     'listarVehiculos',

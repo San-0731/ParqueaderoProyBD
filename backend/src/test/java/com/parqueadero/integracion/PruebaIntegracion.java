@@ -307,6 +307,11 @@ public abstract class PruebaIntegracion {
         vehiculosCreados.add(idVehiculo);
     }
 
+    /** Anota un usuario creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
+    protected void registrarUsuarioCreado(long idUsuario) {
+        usuariosCreados.add(idUsuario);
+    }
+
     /** Anota un propietario creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
     protected void registrarPropietarioCreado(long idCliente) {
         propietariosCreados.add(idCliente);

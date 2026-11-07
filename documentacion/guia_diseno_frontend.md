@@ -147,6 +147,19 @@ const puedeEditar = puede('ADMINISTRADOR');
 En las pruebas de una pantalla, `test/SesionDePrueba.jsx` da la sesión de un rol sin pasar por el
 login: `<SesionDePrueba rol="OPERADOR"><Espacios /></SesionDePrueba>`.
 
+## Pestaña Sistema (`pages/sistema/`)
+
+Es la pestaña exclusiva del DBA. `Sistema.jsx` pone el título y las secciones como pestañas
+(`NavLink` con una línea azul abajo en la activa); cada sección es una ruta hija
+(`/sistema/usuarios`…) que se dibuja en su `<Outlet />`. `/sistema` lleva a la primera.
+
+- **Usuarios** (`sistema/usuarios/`): tabla de cuentas y tres modales (crear, editar y cambiar la
+  contraseña). El nombre de usuario no se edita, igual que la placa. Los usuarios no se borran:
+  se desactivan con el interruptor "Puede iniciar sesión". Las reglas del formulario están en
+  `validacionesUsuario.js` y son las mismas del backend.
+- Cuando el DBA se edita a sí mismo, el modal avisa que quitarse el rol o desactivarse cierra su
+  sesión.
+
 ## Flujo por pasos con resumen fijo (entrada)
 
 - **Pasos numerados.** Cada paso es una `Tarjeta` cuyo título usa `TituloPaso`

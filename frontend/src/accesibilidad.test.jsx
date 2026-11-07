@@ -29,6 +29,7 @@ import { consultarSalud } from './api/salud.js';
 import { guardarSesion } from './api/sesionGuardada.js';
 import { iniciarSesion } from './api/autenticacion.js';
 import { ErrorApi } from './api/cliente.js';
+import { listarUsuarios } from './api/usuarios.js';
 import { listarVehiculos } from './api/vehiculos.js';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 import ProveedorSesion from './context/ProveedorSesion.jsx';
@@ -69,6 +70,12 @@ vi.mock('./api/vehiculos.js', () => ({
   listarVehiculos: vi.fn(),
   crearVehiculo: vi.fn(),
   actualizarVehiculo: vi.fn(),
+}));
+vi.mock('./api/usuarios.js', () => ({
+  listarUsuarios: vi.fn(),
+  crearUsuario: vi.fn(),
+  actualizarUsuario: vi.fn(),
+  cambiarClaveUsuario: vi.fn(),
 }));
 vi.mock('./api/autenticacion.js', () => ({
   iniciarSesion: vi.fn(),
@@ -130,6 +137,7 @@ describe('accesibilidad (axe-core)', () => {
     listarMetodosPago.mockResolvedValue(METODOS);
     listarVehiculos.mockResolvedValue(VEHICULOS);
     listarClientes.mockResolvedValue(CLIENTES);
+    listarUsuarios.mockResolvedValue(Object.values(USUARIOS_DE_PRUEBA));
   });
 
   it('tablero', async () => {
@@ -227,6 +235,27 @@ describe('accesibilidad (axe-core)', () => {
   it('espacios en solo lectura (operador)', async () => {
     renderizarEn('/espacios', 'OPERADOR');
     await screen.findByRole('table', { name: 'Espacios del piso 1' });
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('sistema: usuarios, con los modales de crear, editar y cambiar la contraseña', async () => {
+    const usuario = renderizarEn('/sistema/usuarios');
+    await screen.findByRole('table', { name: 'Lista de usuarios' });
+    expect(await violaciones()).toEqual([]);
+
+    await usuario.click(screen.getByRole('button', { name: 'Nuevo usuario' }));
+    const nuevo = screen.getByRole('dialog', { name: 'Nuevo usuario' });
+    await usuario.click(within(nuevo).getByRole('button', { name: 'Crear usuario' }));
+    expect(await violaciones()).toEqual([]);
+    await usuario.click(within(nuevo).getByRole('button', { name: 'Cancelar' }));
+
+    await usuario.click(screen.getByRole('button', { name: 'Editar ana' }));
+    await screen.findByRole('dialog', { name: 'Editar el usuario ana' });
+    expect(await violaciones()).toEqual([]);
+    await usuario.keyboard('{Escape}');
+
+    await usuario.click(screen.getByRole('button', { name: 'Cambiar la contraseña de ana' }));
+    await screen.findByRole('dialog', { name: 'Cambiar la contraseña de ana' });
     expect(await violaciones()).toEqual([]);
   });
 

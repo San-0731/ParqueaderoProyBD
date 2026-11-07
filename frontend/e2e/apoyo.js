@@ -144,3 +144,21 @@ export async function sacarSiSigueDentro(request, identificador) {
     }
   }
 }
+
+/**
+ * Crea por la API (con la sesión del DBA de e2e/preparacion.js) un usuario activo con el rol
+ * pedido, un nombre que no existe y una contraseña al azar. Devuelve { nombreUsuario, clave }.
+ * Los usuarios no se borran (en la aplicación se desactivan); quedan en la base de pruebas.
+ */
+export async function crearUsuarioPorApi(request, rol) {
+  const nombreUsuario = `e2e_${rol.toLowerCase().slice(0, 5)}_${azar(8, 'abcdefghijklmnopqrstuvwxyz0123456789')}`;
+  const clave = `clave-${azar(12, 'abcdefghijklmnopqrstuvwxyz0123456789')}`;
+  const token = JSON.parse(process.env.E2E_SESION_DBA).token;
+  await json(
+    await request.post(`${API}/usuarios`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { nombreUsuario, nombreCompleto: `Prueba E2E ${rol}`, rol, clave },
+    }),
+  );
+  return { nombreUsuario, clave };
+}
