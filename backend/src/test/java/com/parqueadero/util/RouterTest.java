@@ -7,12 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.parqueadero.exception.DatosInvalidosException;
 import com.parqueadero.exception.MetodoNoPermitidoException;
+import com.parqueadero.exception.NoAutenticadoException;
 import com.parqueadero.exception.RutaNoEncontradaException;
+import com.parqueadero.exception.SinPermisoException;
+import com.parqueadero.model.Rol;
+import com.parqueadero.model.Usuario;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /** Pruebas del {@link Router}, sin levantar el servidor HTTP. */
 class RouterTest {
@@ -299,6 +307,110 @@ class RouterTest {
         Respuesta respuesta = router.despachar("POST", URI.create("/api/vehiculos"), "{}");
 
         assertEquals(new Respuesta(201, "nuevo"), respuesta);
+    }
+
+    // ---------------------------------------------------------- sesión y rol
+
+    private static final Usuario OPERADOR = new Usuario(1, "ana", "Ana", Rol.OPERADOR, true);
+    private static final Usuario ADMINISTRADOR = new Usuario(2, "beto", "Beto", Rol.ADMINISTRADOR, true);
+
+    /** Autenticador de prueba: "t-operador" y "t-admin" son sesiones válidas; nada más. */
+    private static final Autenticador AUTENTICADOR = token -> switch (token) {
+        case "t-operador" -> Optional.of(OPERADOR);
+        case "t-admin" -> Optional.of(ADMINISTRADOR);
+        default -> Optional.empty();
+    };
+
+    private static Peticion ecoConToken(Router router, String metodo, String uri, String token) {
+        return (Peticion) router.despachar(metodo, URI.create(uri), null, token).cuerpo();
+    }
+
+    @Test
+    void rutaPublica_noBuscaElUsuarioAunqueVengaToken() {
+        AtomicInteger consultas = new AtomicInteger();
+        Router router = new Router(token -> {
+            consultas.incrementAndGet();
+            return Optional.of(OPERADOR);
+        }).get("/api/salud", ECO);
+
+        Peticion peticion = ecoConToken(router, "GET", "/api/salud", "t-operador");
+
+        assertNull(peticion.usuario(), "En una ruta pública no se busca el usuario");
+        assertEquals("t-operador", peticion.token());
+        assertEquals(0, consultas.get(), "No se consulta la sesión en la base");
+    }
+
+    @Test
+    void rutaConRol_sinTokenResponde401() {
+        Router router = new Router(AUTENTICADOR).get("/api/auth/yo", Rol.OPERADOR, ECO);
+
+        NoAutenticadoException error = assertThrows(NoAutenticadoException.class,
+                () -> ecoConToken(router, "GET", "/api/auth/yo", null));
+
+        assertEquals(Peticion.MENSAJE_SIN_SESION, error.getMessage());
+        assertEquals(401, error.getEstadoHttp());
+    }
+
+    @Test
+    void rutaConRol_conTokenInvalidoResponde401() {
+        Router router = new Router(AUTENTICADOR).get("/api/auth/yo", Rol.OPERADOR, ECO);
+
+        NoAutenticadoException error = assertThrows(NoAutenticadoException.class,
+                () -> ecoConToken(router, "GET", "/api/auth/yo", "token-vencido"));
+
+        assertEquals(Peticion.MENSAJE_SESION_INVALIDA, error.getMessage());
+    }
+
+    @Test
+    void rutaConRol_conRolSuficientePasaElUsuarioAlManejador() {
+        Router router = new Router(AUTENTICADOR).get("/api/reportes", Rol.ADMINISTRADOR, ECO);
+
+        Peticion peticion = ecoConToken(router, "GET", "/api/reportes", "t-admin");
+
+        assertSame(ADMINISTRADOR, peticion.usuario());
+        assertSame(ADMINISTRADOR, peticion.usuarioAutenticado());
+    }
+
+    @Test
+    void rutaConRol_conRolInsuficienteResponde403() {
+        Router router = new Router(AUTENTICADOR).get("/api/reportes", Rol.ADMINISTRADOR, ECO);
+
+        SinPermisoException error = assertThrows(SinPermisoException.class,
+                () -> ecoConToken(router, "GET", "/api/reportes", "t-operador"));
+
+        assertEquals(403, error.getEstadoHttp());
+        assertEquals("Solo un usuario Administrador o DBA puede hacer esto.", error.getMessage());
+    }
+
+    @Test
+    void routerSinAutenticador_noAceptaNingunToken() {
+        Router router = new Router().get("/api/auth/yo", Rol.OPERADOR, ECO);
+
+        assertThrows(NoAutenticadoException.class,
+                () -> ecoConToken(router, "GET", "/api/auth/yo", "t-operador"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "OPERADOR, 'Solo un usuario Operador o Administrador o DBA puede hacer esto.'",
+        "ADMINISTRADOR, 'Solo un usuario Administrador o DBA puede hacer esto.'",
+        "DBA, 'Solo un usuario DBA puede hacer esto.'",
+    })
+    void mensajeSinPermiso_nombraLosRolesQueSiPueden(Rol minimo, String esperado) {
+        assertEquals(esperado, Router.mensajeSinPermiso(minimo));
+    }
+
+    @Test
+    void usuarioAutenticado_sinSesionLanza401() {
+        Router router = new Router().get("/api/salud", ECO);
+
+        Peticion sinToken = ecoConToken(router, "GET", "/api/salud", null);
+        Peticion conToken = ecoConToken(router, "GET", "/api/salud", "algo");
+
+        assertEquals(Peticion.MENSAJE_SIN_SESION,
+                assertThrows(NoAutenticadoException.class, sinToken::usuarioAutenticado).getMessage());
+        assertEquals(Peticion.MENSAJE_SESION_INVALIDA,
+                assertThrows(NoAutenticadoException.class, conToken::usuarioAutenticado).getMessage());
     }
 
     // ---------------------------------------------------------- registro

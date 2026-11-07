@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.model.Rol;
+import com.parqueadero.util.Contrasenas;
 import com.parqueadero.util.TipoPorPlaca;
+import com.parqueadero.util.Tokens;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -42,7 +45,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       ({@link #identificadorUnico(String)}, {@link #documentoUnico()});</li>
  *   <li>crear datos mínimos ({@link #crearPropietario(Connection)},
  *       {@link #crearVehiculo(Connection, String)},
- *       {@link #crearEspacio(Connection, String, boolean)});</li>
+ *       {@link #crearEspacio(Connection, String, boolean)},
+ *       {@link #crearUsuario(Connection, Rol)});</li>
  *   <li>borrar lo creado al terminar cada prueba ({@link #limpiarDatosCreados()}).</li>
  * </ul>
  *
@@ -68,6 +72,14 @@ public abstract class PruebaIntegracion {
     private final List<Long> vehiculosCreados = new ArrayList<>();
     private final List<Long> propietariosCreados = new ArrayList<>();
     private final List<Long> espaciosCreados = new ArrayList<>();
+    private final List<Long> usuariosCreados = new ArrayList<>();
+
+    /**
+     * Iteraciones de PBKDF2 de los usuarios de prueba: pocas, para que crear
+     * uno no tarde medio segundo. La verificación lee las iteraciones del hash,
+     * así que el inicio de sesión funciona igual que con un usuario real.
+     */
+    private static final int ITERACIONES_PRUEBA = 1_000;
 
     /**
      * Piso de las zonas de prueba. La semilla solo usa los pisos 1 y 2, así que
@@ -95,6 +107,10 @@ public abstract class PruebaIntegracion {
 
     /** Vehículo creado para una prueba, con su propietario. */
     public record VehiculoPrueba(long idVehiculo, String identificador, long idTipo, long idCliente) {
+    }
+
+    /** Usuario creado para una prueba, con su contraseña en claro (solo existe aquí). */
+    public record UsuarioPrueba(long idUsuario, String nombreUsuario, String clave, Rol rol) {
     }
 
     /**
@@ -224,6 +240,32 @@ public abstract class PruebaIntegracion {
     }
 
     /**
+     * Crea un usuario activo de la aplicación con el rol pedido, un nombre que
+     * no existe ({@code prueba_} y 10 letras o números) y una contraseña
+     * aleatoria. Se borra al final de la prueba, con sus sesiones.
+     */
+    protected UsuarioPrueba crearUsuario(Connection conexion, Rol rol) throws SQLException {
+        String nombre;
+        do {
+            nombre = "prueba_" + minusculasYDigitos(10);
+        } while (existe("SELECT 1 FROM usuario WHERE nombre_usuario = ?", nombre)
+                || !GENERADOS.add(nombre));
+        String clave = Tokens.generar();
+        String sql = "INSERT INTO usuario (nombre_usuario, nombre_completo, clave_hash, id_rol)"
+                + " VALUES (?, 'Usuario de prueba', ?, (SELECT id_rol FROM rol WHERE nombre = ?))";
+        try (PreparedStatement insercion = conexion.prepareStatement(sql,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setString(1, nombre);
+            insercion.setString(2, Contrasenas.hash(clave, ITERACIONES_PRUEBA));
+            insercion.setString(3, rol.name());
+            insercion.executeUpdate();
+            long idUsuario = llaveGenerada(insercion);
+            usuariosCreados.add(idUsuario);
+            return new UsuarioPrueba(idUsuario, nombre, clave, rol);
+        }
+    }
+
+    /**
      * Crea un espacio propio de la prueba en la zona de prueba de su tipo (piso
      * {@link #PISO_PRUEBAS}; por ejemplo C99 para carros), con un número libre
      * del 01 al 99. Así la prueba no depende de qué espacios de la semilla V003
@@ -273,13 +315,14 @@ public abstract class PruebaIntegracion {
     /**
      * Borra lo que creó la prueba, en orden inverso a las llaves foráneas:
      * pagos → registros de parqueo (de sus vehículos o en sus espacios) →
-     * vehículos → propietarios → espacios. Se ejecuta solo después de cada
+     * vehículos → propietarios → espacios → sesiones → usuarios. Se ejecuta solo después de cada
      * prueba; si los datos ya se deshicieron con {@code rollback()}, los DELETE
      * no encuentran nada y no pasa nada.
      */
     @AfterEach
     protected void limpiarDatosCreados() throws SQLException {
-        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()) {
+        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()
+                && usuariosCreados.isEmpty()) {
             return;
         }
         // Registros de parqueo de la prueba: los de sus vehículos o los hechos en sus espacios.
@@ -308,6 +351,8 @@ public abstract class PruebaIntegracion {
                 borrarPorIds(conexion, "vehiculo", "id_vehiculo", vehiculosCreados);
                 borrarPorIds(conexion, "cliente", "id_cliente", propietariosCreados);
                 borrarPorIds(conexion, "espacio", "id_espacio", espaciosCreados);
+                borrarPorIds(conexion, "sesion", "id_usuario", usuariosCreados);
+                borrarPorIds(conexion, "usuario", "id_usuario", usuariosCreados);
                 conexion.commit();
             } catch (SQLException e) {
                 conexion.rollback();
@@ -317,6 +362,7 @@ public abstract class PruebaIntegracion {
         vehiculosCreados.clear();
         propietariosCreados.clear();
         espaciosCreados.clear();
+        usuariosCreados.clear();
     }
 
     private static void borrarPorIds(Connection conexion, String tabla, String columna, List<Long> ids)
@@ -410,6 +456,15 @@ public abstract class PruebaIntegracion {
         StringBuilder texto = new StringBuilder(cantidad);
         for (int i = 0; i < cantidad; i++) {
             texto.append(ThreadLocalRandom.current().nextInt(10));
+        }
+        return texto.toString();
+    }
+
+    private static String minusculasYDigitos(int cantidad) {
+        String caracteres = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder texto = new StringBuilder(cantidad);
+        for (int i = 0; i < cantidad; i++) {
+            texto.append(caracteres.charAt(ThreadLocalRandom.current().nextInt(caracteres.length())));
         }
         return texto.toString();
     }

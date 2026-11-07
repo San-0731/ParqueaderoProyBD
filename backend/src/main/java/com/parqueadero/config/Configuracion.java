@@ -39,6 +39,17 @@ public final class Configuracion {
             "PORT", "8080",
             "CORS_ORIGIN", "http://localhost:5173");
 
+    /**
+     * Variables opcionales sin valor por defecto (si faltan, quedan en
+     * {@code null}):
+     * <ul>
+     *   <li>{@code DBA_USUARIO} y {@code DBA_CLAVE_INICIAL}: con ellas el backend
+     *       crea el primer DBA al arrancar, si todavía no hay ninguno activo.</li>
+     * </ul>
+     */
+    private static final List<String> VARIABLES_OPCIONALES_SIN_DEFECTO = List.of(
+            "DBA_USUARIO", "DBA_CLAVE_INICIAL");
+
     private final String dbHost;
     private final int dbPuerto;
     private final String dbNombre;
@@ -46,6 +57,8 @@ public final class Configuracion {
     private final String dbContrasena;
     private final int puertoServidor;
     private final String origenCors;
+    private final String dbaUsuario;
+    private final String dbaClaveInicial;
 
     // Privado: la única forma de crear la configuración es con cargar(),
     // que garantiza que ninguna variable obligatoria falte.
@@ -57,6 +70,8 @@ public final class Configuracion {
         this.dbContrasena = valores.get("DB_PASSWORD");
         this.puertoServidor = leerPuerto("PORT", valores.get("PORT"));
         this.origenCors = leerOrigenCors(valores.get("CORS_ORIGIN"));
+        this.dbaUsuario = valores.get("DBA_USUARIO");
+        this.dbaClaveInicial = valores.get("DBA_CLAVE_INICIAL");
     }
 
     /**
@@ -87,6 +102,12 @@ public final class Configuracion {
             String valor = buscarVariable(nombre, valoresArchivo);
             valores.put(nombre, valor != null ? valor : porDefecto);
         });
+        for (String nombre : VARIABLES_OPCIONALES_SIN_DEFECTO) {
+            String valor = buscarVariable(nombre, valoresArchivo);
+            if (valor != null) {
+                valores.put(nombre, valor);
+            }
+        }
 
         if (!faltantes.isEmpty()) {
             String origen = archivoEnv != null
@@ -270,5 +291,15 @@ public final class Configuracion {
     /** Origen permitido por CORS, por ejemplo {@code http://localhost:5173}. */
     public String getOrigenCors() {
         return origenCors;
+    }
+
+    /** Usuario del primer DBA (DBA_USUARIO), o {@code null} si no está definido. */
+    public String getDbaUsuario() {
+        return dbaUsuario;
+    }
+
+    /** Contraseña inicial del primer DBA (DBA_CLAVE_INICIAL), o {@code null} si no está definida. */
+    public String getDbaClaveInicial() {
+        return dbaClaveInicial;
     }
 }

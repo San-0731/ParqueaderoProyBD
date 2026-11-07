@@ -10,10 +10,13 @@ import com.parqueadero.dao.ModeloDAO;
 import com.parqueadero.dao.PagoDAO;
 import com.parqueadero.dao.RegistroDAO;
 import com.parqueadero.dao.ReporteDAO;
+import com.parqueadero.dao.SesionDAO;
 import com.parqueadero.dao.TarifaDAO;
 import com.parqueadero.dao.TipoVehiculoDAO;
+import com.parqueadero.dao.UsuarioDAO;
 import com.parqueadero.dao.VehiculoDAO;
 import com.parqueadero.handler.ApiHandler;
+import com.parqueadero.handler.AutenticacionHandler;
 import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.EspacioHandler;
@@ -22,6 +25,8 @@ import com.parqueadero.handler.ReporteHandler;
 import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
 import com.parqueadero.handler.VehiculoHandler;
+import com.parqueadero.model.Rol;
+import com.parqueadero.service.AutenticacionService;
 import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.EspacioService;
@@ -113,6 +118,9 @@ public final class Servidor {
      * la API.
      */
     private static Router registrarRutas(ConexionBD conexionBD) {
+        AutenticacionService autenticacionService =
+                new AutenticacionService(conexionBD, new UsuarioDAO(), new SesionDAO());
+        AutenticacionHandler autenticacion = new AutenticacionHandler(autenticacionService);
         SaludHandler salud = new SaludHandler(conexionBD);
         VehiculoHandler vehiculos = new VehiculoHandler(
                 new VehiculoService(conexionBD, new VehiculoDAO(), new TipoVehiculoDAO()));
@@ -131,8 +139,14 @@ public final class Servidor {
         ReporteHandler reportes = new ReporteHandler(
                 new ReporteService(conexionBD, new ReporteDAO()));
 
-        return new Router()
+        // El Router usa el servicio para convertir el token en el usuario, solo
+        // en las rutas que declaran un rol.
+        return new Router(autenticacionService::usuarioDeToken)
                 .get("/api/salud", salud::consultar)
+
+                .post("/api/auth/login", autenticacion::iniciarSesion)
+                .post("/api/auth/logout", Rol.OPERADOR, autenticacion::cerrarSesion)
+                .get("/api/auth/yo", Rol.OPERADOR, autenticacion::yo)
 
                 .get("/api/vehiculos", vehiculos::listar)
                 .get("/api/vehiculos/{id}", vehiculos::buscarPorId)
