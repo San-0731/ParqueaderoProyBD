@@ -29,7 +29,7 @@ function TablaPiso({ piso, filas, onCambiar }) {
         filas={filas}
         claveFila="codigo"
         // El interruptor va justo después del código: es la acción de esta pantalla y así se
-        // alcanza en celular sin desplazar la tabla. La zona ya está en el código (A-01).
+        // alcanza en celular sin desplazar la tabla. La zona ya está en el código (A1-01).
         columnas={[
           {
             clave: 'codigo',

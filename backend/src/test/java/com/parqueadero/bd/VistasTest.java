@@ -64,8 +64,8 @@ class VistasTest extends PruebaBaseDatos {
         assertEquals(MOTO, fila.get("tipo_vehiculo"));
         assertEquals(documento, fila.get("documento_cliente"));
         assertEquals("Prueba Integración", fila.get("nombre_cliente"));
-        assertEquals("P9", fila.get("piso"));
-        assertEquals("PRB", fila.get("zona"));
+        assertEquals(PISO_PRUEBAS, fila.get("piso"));
+        assertEquals(LETRA_ZONA_PRUEBAS.get(MOTO), fila.get("zona"));
         assertEquals(espacio, ((Number) fila.get("id_espacio")).longValue());
         long minutos = ((Number) fila.get("minutos_transcurridos")).longValue();
         assertTrue(minutos >= 120 && minutos <= 121, "Lleva unos 120 minutos, pero la vista dice " + minutos);

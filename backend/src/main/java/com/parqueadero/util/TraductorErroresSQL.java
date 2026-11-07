@@ -73,7 +73,8 @@ public final class TraductorErroresSQL {
             Pattern.compile("Data too long for column '([^']+)'");
 
     // -------------------------------------------------------------------------
-    // Mensajes por restricción (nombres de V001__crear_tablas.sql).
+    // Mensajes por restricción (nombres de V001__crear_tablas.sql y de las
+    // migraciones posteriores, como V006__normalizar_zonas.sql).
     // Si una migración nueva agrega una restricción, agregar aquí su mensaje;
     // mientras no esté, se usa el mensaje genérico de su tipo.
     // -------------------------------------------------------------------------
@@ -87,7 +88,8 @@ public final class TraductorErroresSQL {
             entry("uq_modelo_marca_nombre", "Esa marca ya tiene un modelo con ese nombre."),
             entry("uq_cliente_documento", "Ya existe un cliente con el documento '%s'."),
             entry("uq_vehiculo_identificador", "Ya existe un vehículo con la placa o código '%s'."),
-            entry("uq_espacio_ubicacion", "Ya existe un espacio en ese piso, zona y número."),
+            entry("uq_zona_piso_letra", "Ya existe una zona con esa letra en ese piso."),
+            entry("uq_espacio_zona_numero", "Esa zona ya tiene un espacio con ese número."),
             entry("uq_registro_vehiculo_activo", "El vehículo ya tiene un parqueo activo."),
             entry("uq_registro_espacio_activo", "El espacio ya está ocupado por otro vehículo."),
             entry("uq_metodo_pago_nombre", "Ya existe un método de pago llamado '%s'."),
@@ -100,7 +102,8 @@ public final class TraductorErroresSQL {
             entry("fk_vehiculo_tipo_vehiculo", "El tipo de vehículo indicado no existe."),
             entry("fk_vehiculo_modelo", "El modelo indicado no existe."),
             entry("fk_vehiculo_cliente", "El cliente indicado no existe."),
-            entry("fk_espacio_tipo_vehiculo", "El tipo de vehículo indicado no existe."),
+            entry("fk_zona_tipo_vehiculo", "El tipo de vehículo indicado no existe."),
+            entry("fk_espacio_zona", "La zona indicada no existe."),
             entry("fk_registro_vehiculo", "El vehículo indicado no existe."),
             entry("fk_registro_espacio", "El espacio indicado no existe."),
             entry("fk_pago_registro", "El registro de parqueo indicado no existe."),
@@ -117,8 +120,9 @@ public final class TraductorErroresSQL {
                     "No se puede borrar el modelo porque hay vehículos de ese modelo."),
             entry("fk_vehiculo_cliente",
                     "No se puede borrar el cliente porque tiene vehículos registrados."),
-            entry("fk_espacio_tipo_vehiculo",
-                    "No se puede borrar el tipo de vehículo porque hay espacios para ese tipo."),
+            entry("fk_zona_tipo_vehiculo",
+                    "No se puede borrar el tipo de vehículo porque hay zonas para ese tipo."),
+            entry("fk_espacio_zona", "No se puede borrar la zona porque tiene espacios."),
             entry("fk_registro_vehiculo",
                     "No se puede borrar el vehículo porque tiene parqueos registrados."),
             entry("fk_registro_espacio",
@@ -141,7 +145,11 @@ public final class TraductorErroresSQL {
             entry("chk_registro_minutos_coherentes",
                     "Los minutos totales no coinciden con el tiempo entre la entrada y la salida."),
             entry("chk_registro_valor_total_no_negativo", "El valor total no puede ser negativo."),
-            entry("chk_pago_monto_positivo", "El monto del pago debe ser mayor que 0."));
+            entry("chk_pago_monto_positivo", "El monto del pago debe ser mayor que 0."),
+            entry("chk_zona_piso_formato", "El piso debe ser un número del 1 al 99."),
+            entry("chk_zona_letra_formato", "La zona debe ser una sola letra mayúscula (A-Z)."),
+            entry("chk_espacio_numero_formato",
+                    "El número del espacio debe tener dos dígitos, del 01 al 99."));
 
     private TraductorErroresSQL() {
         // Clase de utilidades: no se crean objetos de ella.

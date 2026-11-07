@@ -65,10 +65,11 @@ describe('agruparPorPisoYZona', () => {
 
     expect(pisos.map((piso) => piso.piso)).toEqual(['1', '2']);
     expect(pisos[0].zonas.map((zona) => zona.zona)).toEqual(['A', 'M']);
+    expect(pisos[0].zonas.map((zona) => zona.nombre)).toEqual(['A1', 'M1']);
     expect(pisos[0].zonas[0].espacios.map((espacio) => espacio.codigo)).toEqual([
-      'A-01',
-      'A-02',
-      'A-03',
+      'A1-01',
+      'A1-02',
+      'A1-03',
     ]);
   });
 

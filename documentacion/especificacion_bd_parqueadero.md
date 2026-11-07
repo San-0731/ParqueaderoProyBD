@@ -13,6 +13,8 @@ Sistema para el registro y control de los vehículos que solicitan parqueo. Debe
   - `V003__datos_prueba.sql`: clientes, vehículos, parqueos y pagos de prueba.
   - `V004__vistas.sql`: las vistas de consulta.
   - `V005__triggers.sql`: los triggers descritos en la sección "Reglas implementadas con triggers".
+  - `V006__normalizar_zonas.sql`: crea la tabla `zona`, pasa a ella el piso y el tipo de vehículo de cada espacio y vuelve a crear las vistas y los triggers que los usaban (ver "Decisiones de diseño").
+- Una base que ya existe no vuelve a ejecutar las migraciones: una nueva se aplica con `./database/scripts/aplicar-migracion.sh database/migrations/V00N__....sql`, que antes hace un respaldo.
 - Nombra todas las restricciones de forma explícita con los prefijos `pk_`, `fk_`, `uq_`, `chk_` e `idx_`.
 - Todas las llaves foráneas usan `ON DELETE RESTRICT ON UPDATE RESTRICT`, para no perder el historial de parqueos y pagos.
 - Todas las llaves primarias son `INT UNSIGNED AUTO_INCREMENT`.
@@ -25,7 +27,8 @@ erDiagram
   MARCA ||--o{ MODELO : fabrica
   MODELO |o--o{ VEHICULO : es_de
   TIPO_VEHICULO ||--o{ VEHICULO : clasifica
-  TIPO_VEHICULO ||--o{ ESPACIO : admite
+  TIPO_VEHICULO ||--o{ ZONA : admite
+  ZONA ||--o{ ESPACIO : agrupa
   TIPO_VEHICULO ||--o{ TARIFA : tiene
   CLIENTE ||--o{ VEHICULO : posee
   VEHICULO ||--o{ REGISTRO_PARQUEO : solicita
@@ -36,7 +39,7 @@ erDiagram
 
 ## Tablas
 
-Orden de creación: `tipo_vehiculo`, `tarifa`, `marca`, `modelo`, `cliente`, `vehiculo`, `espacio`, `registro_parqueo`, `metodo_pago`, `pago`.
+Orden de creación: `tipo_vehiculo`, `tarifa`, `marca`, `modelo`, `cliente`, `vehiculo`, `espacio`, `registro_parqueo`, `metodo_pago`, `pago` (V001) y `zona` (V006).
 
 ### tipo_vehiculo
 
@@ -105,21 +108,35 @@ Restricciones adicionales:
 | color | VARCHAR(30) | Sí | |
 | anio | SMALLINT UNSIGNED | Sí | CHECK `anio BETWEEN 1900 AND 2100` |
 
+### zona (V006)
+
+Un área de un piso demarcada para un solo tipo de vehículo. La misma letra puede repetirse en pisos distintos; por eso la zona se nombra con la letra seguida del piso: **A1** es la zona A del piso 1 y **A2** la del piso 2. No hay tabla de pisos: un piso existe cuando tiene al menos una zona.
+
+| Columna | Tipo | Nulo | Restricciones |
+|---|---|---|---|
+| id_zona | INT UNSIGNED | No | PK, AUTO_INCREMENT |
+| piso | VARCHAR(2) | No | CHECK: número del 1 al 99, sin ceros a la izquierda |
+| letra | CHAR(1) | No | CHECK: una letra mayúscula de la A a la Z |
+| id_tipo | INT UNSIGNED | No | FK → `tipo_vehiculo(id_tipo)` |
+
+Restricciones adicionales:
+- `uq_zona_piso_letra`: UNIQUE (`piso`, `letra`). En un piso no se repite la letra.
+
 ### espacio
 
-Cada espacio está demarcado para un tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `estado` = 'ACTIVO').
+Cada espacio pertenece a una zona, y de ella toma el piso y el tipo de vehículo. `habilitado` indica si está en servicio; la ocupación NO se guarda aquí, se calcula desde `registro_parqueo` (registro con `estado` = 'ACTIVO'). En pantalla se nombra zona-número: **A1-01**.
 
 | Columna | Tipo | Nulo | Restricciones |
 |---|---|---|---|
 | id_espacio | INT UNSIGNED | No | PK, AUTO_INCREMENT |
-| id_tipo | INT UNSIGNED | No | FK → `tipo_vehiculo(id_tipo)` |
-| piso | VARCHAR(10) | No | |
-| zona | VARCHAR(10) | No | |
-| numero | VARCHAR(10) | No | |
+| id_zona | INT UNSIGNED | No | FK → `zona(id_zona)` |
+| numero | VARCHAR(2) | No | CHECK: dos dígitos, del 01 al 99 |
 | habilitado | BOOLEAN | No | DEFAULT TRUE |
 
 Restricciones adicionales:
-- `uq_espacio_ubicacion`: UNIQUE (`piso`, `zona`, `numero`).
+- `uq_espacio_zona_numero`: UNIQUE (`id_zona`, `numero`). En una zona no se repite el número.
+
+Hasta V005, `espacio` tenía además `id_tipo`, `piso` y `zona` (texto), con UNIQUE (`piso`, `zona`, `numero`). V006 los pasó a `zona` sin cambiar los `id_espacio`.
 
 ### registro_parqueo
 
@@ -171,12 +188,12 @@ Un registro puede tener uno o varios pagos (relación 1:N), lo que permite pagos
 ## Reglas implementadas con triggers
 
 1. **Normalizar el identificador del vehículo** (`BEFORE INSERT` y `BEFORE UPDATE` en `vehiculo`): convertir a mayúsculas y quitar espacios y guiones, para que "abc-123" y "ABC123" no queden como vehículos distintos. Ejemplo: `SET NEW.identificador = UPPER(REPLACE(REPLACE(NEW.identificador, ' ', ''), '-', ''));`
-2. **El tipo del vehículo debe coincidir con el tipo del espacio** (`BEFORE INSERT` y `BEFORE UPDATE` en `registro_parqueo`): si `vehiculo.id_tipo` es distinto de `espacio.id_tipo`, lanzar `SIGNAL SQLSTATE '45000'` con un mensaje claro.
+2. **El tipo del vehículo debe coincidir con el tipo del espacio** (`BEFORE INSERT` y `BEFORE UPDATE` en `registro_parqueo`): si `vehiculo.id_tipo` es distinto del tipo de la zona del espacio (`zona.id_tipo`; hasta V005, `espacio.id_tipo`), lanzar `SIGNAL SQLSTATE '45000'` con un mensaje claro.
 3. **Solo se puede parquear en espacios habilitados** (`BEFORE INSERT` en `registro_parqueo`): si `espacio.habilitado` es FALSE, lanzar `SIGNAL SQLSTATE '45000'`.
 
 Si los triggers 2 y 3 aplican al mismo evento, combínalos en un solo trigger por evento.
 
-Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de `registro_parqueo` se valida solo si cambia el vehículo o el espacio; si se mueve a otro espacio, también debe estar habilitado. Así, cerrar un registro nunca se bloquea.
+Implementados en `database/migrations/V005__triggers.sql`; V006 vuelve a crear los dos de `registro_parqueo` para que lean el tipo desde `zona`, con las mismas reglas y mensajes. En `BEFORE UPDATE` de `registro_parqueo` se valida solo si cambia el vehículo o el espacio; si se mueve a otro espacio, también debe estar habilitado. Así, cerrar un registro nunca se bloquea.
 
 ## Reglas que maneja la aplicación (no van en la base de datos)
 
@@ -197,6 +214,8 @@ Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de
 
 ## Vistas (V004__vistas.sql)
 
+V006 vuelve a crear las tres que usan espacios para que tomen el piso, la letra y el tipo de la tabla `zona`, con los mismos nombres de columna (`piso`, `zona`, `numero`, `id_tipo`). Así el código que las consulta no cambió.
+
 - `vw_espacios_disponibles`: espacios habilitados sin registro en estado 'ACTIVO'.
 - `vw_parqueos_activos`: registros 'ACTIVO' con placa, tipo, cliente, espacio y `minutos_transcurridos` (calculado con `NOW()` al consultar).
 - `vw_historial_parqueos`: registros 'PAGO', una fila por parqueo. Si hubo varios pagos, los métodos y las referencias se unen con ' + '.
@@ -208,7 +227,7 @@ Catálogos (`V002__datos_catalogo.sql`):
 - `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión. El backend asigna el tipo según la placa: `ABC123` es Carro, `ABC12D` es Moto, `R12345` o `S12345` es Camión y cualquier otra es Bicicleta. La placa y el tipo no se pueden cambiar después de registrar el vehículo. En el frontend, "Camión" se muestra como "Camión de carga pesada".
 - `metodo_pago`: PSE, Nequi y Daviplata con `requiere_referencia` TRUE; Efectivo con FALSE.
 - `tarifa`: dos por tipo. Las antiguas rigen desde 2025-01-01 (Moto 1.800, Bicicleta 800, Carro 4.500, Camión 8.000) y las actuales desde 2026-10-01 (Moto 2.000, Bicicleta 1.000, Carro 5.000, Camión 9.000).
-- `espacio`: 20 en 2 pisos. Piso 1: zona A (8 carros) y zona M (4 motos). Piso 2: zona B (4 carros; el 2-B-04 está deshabilitado), zona C (2 camiones) y zona K (2 bicicletas).
+- `espacio`: 20 en 2 pisos. Piso 1: zona A1 (8 carros) y zona M1 (4 motos). Piso 2: zona B2 (4 carros; el B2-04 está deshabilitado), zona C2 (2 camiones) y zona K2 (2 bicicletas). V002 los inserta con la estructura de V001 y V006 los reparte en esas 5 zonas.
 
 Datos de prueba (`V003__datos_prueba.sql`): 9 marcas, 12 modelos, 10 clientes y 15 vehículos. Además, 27 registros en estado 'PAGO' (del 14-sep al 29-oct-2026, cobrados por hora o fracción) con 29 pagos que suman 505.600, y 4 registros en estado 'ACTIVO'.
 
@@ -217,4 +236,5 @@ Datos de prueba (`V003__datos_prueba.sql`): 9 marcas, 12 modelos, 10 clientes y 
 - `vehiculo` usa una llave sustituta (`id_vehiculo`) porque las bicicletas no tienen placa; la unicidad del vehículo la garantiza `identificador`.
 - `marca` y `modelo` están separadas para eliminar la dependencia transitiva modelo → marca (tercera forma normal). El año queda en `vehiculo` porque es propio de cada unidad, no de la línea.
 - `tarifa` se relaciona solo con `tipo_vehiculo`. No se guarda `id_tarifa` en `registro_parqueo` porque es deducible (registro → vehículo → tipo → tarifa vigente), y guardarla creaba un ciclo que permitía inconsistencias (por ejemplo, una moto con tarifa de camión).
-- `espacio` sí se relaciona con `tipo_vehiculo` y con `registro_parqueo`: ninguna de las dos relaciones es deducible de la otra. La posible contradicción entre ambos caminos se controla con el trigger 2.
+- `espacio` sí se relaciona (a través de su zona) con `tipo_vehiculo` y con `registro_parqueo`: ninguna de las dos relaciones es deducible de la otra. La posible contradicción entre ambos caminos se controla con el trigger 2.
+- **Tabla `zona` (V006, tercera forma normal).** Hasta V005, cada espacio guardaba su piso, su zona y su tipo. Como una zona admite un solo tipo, se cumplía `(piso, zona) → id_tipo` y, por lo tanto, `id_espacio → (piso, zona) → id_tipo`: el tipo dependía del espacio solo a través de su zona. Esa dependencia transitiva causaba redundancia (el tipo repetido en cada espacio de la zona), una anomalía de inserción (nada impedía un espacio de motos en una zona de carros, y no se podía crear una zona sin espacios) y una anomalía de actualización (cambiar el tipo de una zona obligaba a modificar todos sus espacios). Con `zona (piso, letra, id_tipo)` cada dato se guarda una sola vez y la regla "una zona, un tipo" la garantiza la estructura, sin triggers.

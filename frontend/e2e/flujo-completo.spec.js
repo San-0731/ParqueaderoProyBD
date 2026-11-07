@@ -48,7 +48,7 @@ test('carro y propietario nuevos: entrada, cobro con Nequi, recibo, historial y 
         .getByRole('group', { name: 'Espacios libres para Carro' })
         .getByRole('radio')
         .first();
-      const nombreEspacio = await espacio.getAttribute('aria-label'); // "A-01, piso 1"
+      const nombreEspacio = await espacio.getAttribute('aria-label'); // "A1-01, piso 1"
       codigoEspacio = nombreEspacio.split(',')[0];
       await espacio.press('Space');
       await expect(espacio).toBeChecked();

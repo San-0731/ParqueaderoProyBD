@@ -108,9 +108,10 @@ Los componentes del dominio que usan varias pantallas van en `components/<tema>/
 | `validaciones.js` | Los mismos límites y mensajes del backend, para avisar antes de enviar |
 
 Las funciones de formato que comparten varias pantallas van en `utils/`. Por ejemplo,
-`utils/espacio.js` tiene `codigoEspacio` ("A-01"), `nombreEspacio` ("A-01, piso 1") y
+`utils/espacio.js` tiene `nombreZona` ("A1": la letra seguida del piso, porque la misma letra
+puede repetirse en otro piso), `codigoEspacio` ("A1-01"), `nombreEspacio` ("A1-01, piso 1") y
 `estadoEspacio` (libre, ocupado o deshabilitado; la usan el tablero y la administración de
-espacios).
+espacios). Toda zona o espacio que se muestre usa estas funciones, nunca la letra sola.
 
 ## Flujo por pasos con resumen fijo (entrada)
 

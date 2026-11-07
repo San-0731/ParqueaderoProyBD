@@ -25,8 +25,8 @@ const ESTILOS = {
  * - deshabilitado: botón que avisa por qué no se puede usar (onDeshabilitado).
  *
  * El nombre accesible es el mismo texto que se ve, separado con espacios, más el contexto al
- * final solo para el lector de pantalla: "A-02 KLM 234 2 h 15 min (piso 1, ocupado): registrar
- * salida". Así quien usa control por voz puede decir lo que ve ("A-02") y el lector de pantalla
+ * final solo para el lector de pantalla: "A1-02 KLM 234 2 h 15 min (piso 1, ocupado): registrar
+ * salida". Así quien usa control por voz puede decir lo que ve ("A1-02") y el lector de pantalla
  * oye lo que hace el enlace (regla "etiqueta en el nombre", WCAG 2.5.3).
  *
  * @param espacio un espacio de agruparPorPisoYZona (con codigo, estado y registro)

@@ -170,7 +170,7 @@ describe('Historial', () => {
     expect(within(tabla()).getByText('Efectivo + Nequi')).toBeInTheDocument();
     expect(within(tabla()).getByText('Sin cobro')).toBeInTheDocument();
     expect(within(tabla()).getByText('Camión de carga pesada')).toBeInTheDocument();
-    expect(within(tabla()).getByText('C-01, piso 2')).toBeInTheDocument();
+    expect(within(tabla()).getByText('C2-01, piso 2')).toBeInTheDocument();
   });
 
   it('si falla la consulta muestra el error y "Reintentar" vuelve a consultar', async () => {
