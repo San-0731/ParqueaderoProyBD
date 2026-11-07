@@ -27,7 +27,9 @@ public final class ReporteDAO {
      *
      * <ul>
      *   <li>El LEFT JOIN desde {@code tipo_vehiculo} hace que un tipo sin
-     *       espacios también aparezca, con ceros.</li>
+     *       espacios también aparezca, con ceros. El tipo está en la zona
+     *       (V006): tipo → zonas de ese tipo → espacios de esas zonas. Una zona
+     *       sin espacios deja {@code e.*} en NULL y no suma nada.</li>
      *   <li>El LEFT JOIN con los registros ACTIVO no cuenta nada dos veces: el
      *       índice UNIQUE {@code uq_registro_espacio_activo} garantiza que cada
      *       espacio tiene como mucho un registro ACTIVO.</li>
@@ -45,7 +47,8 @@ public final class ReporteDAO {
                     + " COALESCE(SUM(e.habilitado AND r.id_registro IS NULL), 0) AS libres,"
                     + " COALESCE(SUM(NOT e.habilitado AND r.id_registro IS NULL), 0) AS deshabilitados"
                     + " FROM tipo_vehiculo t"
-                    + " LEFT JOIN espacio e          ON e.id_tipo = t.id_tipo"
+                    + " LEFT JOIN zona z             ON z.id_tipo = t.id_tipo"
+                    + " LEFT JOIN espacio e          ON e.id_zona = z.id_zona"
                     + " LEFT JOIN registro_parqueo r ON r.id_espacio = e.id_espacio"
                     + "                             AND r.estado = 'ACTIVO'"
                     + " GROUP BY t.id_tipo, t.nombre"

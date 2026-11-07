@@ -35,11 +35,11 @@ class EntornoPruebasTest extends PruebaIntegracion {
         assertEquals(Set.of("parqueadero_test"), consultarNombres("SELECT DATABASE()"));
     }
 
-    /** El script recrear-bd-pruebas.sh aplicó todas las migraciones (V001 a V005). */
+    /** El script recrear-bd-pruebas.sh aplicó todas las migraciones (V001 a V006). */
     @Test
     void laBaseDePruebasTieneTodasLasTablasVistasYTriggers() throws SQLException {
         assertEquals(Set.of("tipo_vehiculo", "tarifa", "marca", "modelo", "cliente", "vehiculo",
-                        "espacio", "registro_parqueo", "metodo_pago", "pago"),
+                        "zona", "espacio", "registro_parqueo", "metodo_pago", "pago"),
                 consultarNombres("SELECT TABLE_NAME FROM information_schema.TABLES"
                         + " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"));
         assertEquals(Set.of("vw_espacios_disponibles", "vw_parqueos_activos",

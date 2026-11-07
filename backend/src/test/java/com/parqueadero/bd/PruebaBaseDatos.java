@@ -80,8 +80,8 @@ abstract class PruebaBaseDatos extends PruebaIntegracion {
     // ------------------------------------------------------------ datos de prueba
 
     /**
-     * Crea, dentro de la transacción, un espacio propio de la prueba (piso
-     * {@code P9}, zona {@code PRB}), para no depender de qué espacios de la
+     * Crea, dentro de la transacción, un espacio propio de la prueba en la zona
+     * de prueba de su tipo (piso 99), para no depender de qué espacios de la
      * semilla V003 están libres.
      *
      * @param tipo una de las constantes de {@link com.parqueadero.util.TipoPorPlaca}

@@ -16,6 +16,10 @@ import java.util.Optional;
  *
  * <p>La ocupación no se guarda en {@code espacio}: un espacio está ocupado si
  * tiene un registro de parqueo en estado 'ACTIVO'.
+ *
+ * <p>Desde V006 el piso y el tipo de vehículo están en la tabla {@code zona}:
+ * las consultas los toman con un JOIN y devuelven la letra de la zona con el
+ * alias {@code zona}, igual que antes.
  */
 public final class EspacioDAO {
 
@@ -25,27 +29,36 @@ public final class EspacioDAO {
      * detiene en el primero), o 0 si no.
      */
     private static final String SELECT_CON_ESTADO =
-            "SELECT e.id_espacio, e.id_tipo, e.piso, e.zona, e.numero, e.habilitado,"
+            "SELECT e.id_espacio, z.id_tipo, z.piso, z.letra AS zona, e.numero, e.habilitado,"
                     + " EXISTS (SELECT 1 FROM registro_parqueo r"
                     + "         WHERE r.id_espacio = e.id_espacio AND r.estado = 'ACTIVO') AS ocupado"
-                    + " FROM espacio e";
+                    + " FROM espacio e"
+                    + " JOIN zona z ON z.id_zona = e.id_zona";
 
-    private static final String ORDEN = " ORDER BY piso, zona, numero";
+    /**
+     * Orden por piso, zona y número. El piso es texto ('1' a '99'): se convierte
+     * a número para que el piso 10 quede después del 2 y no entre el 1 y el 2.
+     */
+    private static final String ORDEN = " ORDER BY CAST(z.piso AS UNSIGNED), z.letra, e.numero";
 
     private static final String SQL_LISTAR = SELECT_CON_ESTADO + ORDEN;
 
     private static final String SQL_LISTAR_POR_TIPO =
-            SELECT_CON_ESTADO + " WHERE e.id_tipo = ?" + ORDEN;
+            SELECT_CON_ESTADO + " WHERE z.id_tipo = ?" + ORDEN;
 
     private static final String SQL_BUSCAR_POR_ID = SELECT_CON_ESTADO + " WHERE e.id_espacio = ?";
 
-    // La vista vw_espacios_disponibles (V004) ya filtra habilitados y libres.
+    // La vista vw_espacios_disponibles (V004, rehecha en V006) ya filtra
+    // habilitados y libres, y ya trae el piso, la zona y el tipo.
+    private static final String ORDEN_VISTA = " ORDER BY CAST(piso AS UNSIGNED), zona, numero";
+
     private static final String SQL_LISTAR_DISPONIBLES =
-            "SELECT id_espacio, id_tipo, piso, zona, numero FROM vw_espacios_disponibles" + ORDEN;
+            "SELECT id_espacio, id_tipo, piso, zona, numero FROM vw_espacios_disponibles"
+                    + ORDEN_VISTA;
 
     private static final String SQL_LISTAR_DISPONIBLES_POR_TIPO =
             "SELECT id_espacio, id_tipo, piso, zona, numero FROM vw_espacios_disponibles"
-                    + " WHERE id_tipo = ?" + ORDEN;
+                    + " WHERE id_tipo = ?" + ORDEN_VISTA;
 
     private static final String SQL_ACTUALIZAR_HABILITADO =
             "UPDATE espacio SET habilitado = ? WHERE id_espacio = ?";

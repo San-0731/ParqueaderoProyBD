@@ -17,6 +17,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -68,9 +69,29 @@ public abstract class PruebaIntegracion {
     private final List<Long> propietariosCreados = new ArrayList<>();
     private final List<Long> espaciosCreados = new ArrayList<>();
 
-    /** Número del próximo espacio de prueba; empieza en un valor al azar para no chocar con otras ejecuciones. */
+    /**
+     * Piso de las zonas de prueba. La semilla solo usa los pisos 1 y 2, así que
+     * las pruebas nunca tocan los espacios de V002.
+     */
+    public static final String PISO_PRUEBAS = "99";
+
+    /**
+     * Letra de la zona de prueba de cada tipo de vehículo, todas en el piso
+     * {@link #PISO_PRUEBAS}. Una zona admite un solo tipo (V006), por eso hay
+     * una por tipo: C99 carros, M99 motos, T99 camiones y B99 bicicletas.
+     */
+    public static final Map<String, String> LETRA_ZONA_PRUEBAS = Map.of(
+            TipoPorPlaca.CARRO, "C",
+            TipoPorPlaca.MOTO, "M",
+            TipoPorPlaca.CAMION, "T",
+            TipoPorPlaca.BICICLETA, "B");
+
+    /** Máximo de espacios por zona: los números van del 01 al 99 (V006). */
+    private static final int MAX_ESPACIOS_POR_ZONA = 99;
+
+    /** Contador para elegir el número del próximo espacio de prueba; empieza al azar. */
     private static final AtomicInteger SIGUIENTE_ESPACIO =
-            new AtomicInteger(ThreadLocalRandom.current().nextInt(1_000_000));
+            new AtomicInteger(ThreadLocalRandom.current().nextInt(MAX_ESPACIOS_POR_ZONA));
 
     /** Vehículo creado para una prueba, con su propietario. */
     public record VehiculoPrueba(long idVehiculo, String identificador, long idTipo, long idCliente) {
@@ -203,25 +224,33 @@ public abstract class PruebaIntegracion {
     }
 
     /**
-     * Crea un espacio propio de la prueba (piso {@code P9}, zona {@code PRB},
-     * número único), para no depender de qué espacios de la semilla V003
-     * están libres. Se borra al final de la prueba.
+     * Crea un espacio propio de la prueba en la zona de prueba de su tipo (piso
+     * {@link #PISO_PRUEBAS}; por ejemplo C99 para carros), con un número libre
+     * del 01 al 99. Así la prueba no depende de qué espacios de la semilla V003
+     * están libres. El espacio se borra al final de la prueba; la zona se queda,
+     * porque la comparten todas las pruebas.
      *
      * @param tipo una de las constantes de {@link TipoPorPlaca}
      * @return el id del espacio creado
      */
     protected long crearEspacio(Connection conexion, String tipo, boolean habilitado)
             throws SQLException {
+        long idZona = zonaDePrueba(conexion, tipo);
         String numero;
+        int intentos = 0;
         do {
-            numero = "E" + SIGUIENTE_ESPACIO.getAndIncrement();
-        } while (existe("SELECT 1 FROM espacio WHERE piso = 'P9' AND zona = 'PRB' AND numero = ?",
-                numero));
-        String sql = "INSERT INTO espacio (id_tipo, piso, zona, numero, habilitado)"
-                + " VALUES (?, 'P9', 'PRB', ?, ?)";
+            if (++intentos > MAX_ESPACIOS_POR_ZONA) {
+                throw new IllegalStateException("La zona de prueba de " + tipo + " ya tiene "
+                        + MAX_ESPACIOS_POR_ZONA + " espacios. Recrea la base de pruebas:"
+                        + " ./database/scripts/recrear-bd-pruebas.sh");
+            }
+            int siguiente = Math.floorMod(SIGUIENTE_ESPACIO.getAndIncrement(), MAX_ESPACIOS_POR_ZONA);
+            numero = String.format("%02d", siguiente + 1);
+        } while (existe("SELECT 1 FROM espacio WHERE id_zona = ? AND numero = ?", idZona, numero));
+        String sql = "INSERT INTO espacio (id_zona, numero, habilitado) VALUES (?, ?, ?)";
         try (PreparedStatement insercion = conexion.prepareStatement(sql,
                 Statement.RETURN_GENERATED_KEYS)) {
-            insercion.setLong(1, idTipo(conexion, tipo));
+            insercion.setLong(1, idZona);
             insercion.setString(2, numero);
             insercion.setBoolean(3, habilitado);
             insercion.executeUpdate();
@@ -300,11 +329,44 @@ public abstract class PruebaIntegracion {
 
     // ---------------------------------------------------------------- auxiliares
 
-    /** Consulta si la búsqueda con un parámetro devuelve al menos una fila. */
-    private static boolean existe(String sql, String valor) {
+    /**
+     * Id de la zona de prueba del tipo pedido. Si todavía no existe, la crea con
+     * la misma conexión (si esa conexión tiene una transacción que luego se
+     * deshace, la zona se vuelve a crear la próxima vez).
+     */
+    private static long zonaDePrueba(Connection conexion, String tipo) throws SQLException {
+        String letra = LETRA_ZONA_PRUEBAS.get(tipo);
+        if (letra == null) {
+            throw new IllegalArgumentException("No hay zona de prueba para el tipo " + tipo);
+        }
+        String buscar = "SELECT id_zona FROM zona WHERE piso = ? AND letra = ?";
+        try (PreparedStatement consulta = conexion.prepareStatement(buscar)) {
+            consulta.setString(1, PISO_PRUEBAS);
+            consulta.setString(2, letra);
+            try (ResultSet fila = consulta.executeQuery()) {
+                if (fila.next()) {
+                    return fila.getLong(1);
+                }
+            }
+        }
+        String crear = "INSERT INTO zona (piso, letra, id_tipo) VALUES (?, ?, ?)";
+        try (PreparedStatement insercion = conexion.prepareStatement(crear,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setString(1, PISO_PRUEBAS);
+            insercion.setString(2, letra);
+            insercion.setLong(3, idTipo(conexion, tipo));
+            insercion.executeUpdate();
+            return llaveGenerada(insercion);
+        }
+    }
+
+    /** Consulta si la búsqueda (con sus parámetros) devuelve al menos una fila. */
+    private static boolean existe(String sql, Object... valores) {
         try (Connection conexion = conexion();
              PreparedStatement consulta = conexion.prepareStatement(sql)) {
-            consulta.setString(1, valor);
+            for (int i = 0; i < valores.length; i++) {
+                consulta.setObject(i + 1, valores[i]);
+            }
             try (ResultSet fila = consulta.executeQuery()) {
                 return fila.next();
             }

@@ -2,7 +2,7 @@ package com.parqueadero.model;
 
 /**
  * Un espacio con su estado actual, calculado al consultar. No es una tabla:
- * es el resultado de una consulta sobre {@code espacio} y
+ * es el resultado de una consulta sobre {@code espacio}, {@code zona} y
  * {@code registro_parqueo} (o de la vista {@code vw_espacios_disponibles}).
  *
  * <ul>
@@ -15,9 +15,9 @@ package com.parqueadero.model;
  * </ul>
  *
  * @param idEspacio  llave primaria
- * @param idTipo     tipo de vehículo que admite el espacio
- * @param piso       piso
- * @param zona       zona dentro del piso
+ * @param idTipo     tipo de vehículo que admite el espacio (el de su zona)
+ * @param piso       piso de su zona
+ * @param zona       letra de su zona (A, B…); con el piso forma el nombre de la zona: A1
  * @param numero     número dentro de la zona
  * @param habilitado si está en servicio
  * @param ocupado    si hay un vehículo parqueado ahora

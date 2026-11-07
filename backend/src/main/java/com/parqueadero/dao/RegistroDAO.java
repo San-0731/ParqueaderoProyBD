@@ -48,11 +48,12 @@ public final class RegistroDAO {
 
     private static final String SQL_BUSCAR_DETALLE =
             "SELECT r.id_registro, r.id_vehiculo, v.identificador, r.id_espacio,"
-                    + " e.piso, e.zona, e.numero, r.entrada, r.salida, r.minutos_totales,"
+                    + " z.piso, z.letra AS zona, e.numero, r.entrada, r.salida, r.minutos_totales,"
                     + " r.valor_total, r.estado"
                     + " FROM registro_parqueo r"
                     + " JOIN vehiculo v ON v.id_vehiculo = r.id_vehiculo"
                     + " JOIN espacio e  ON e.id_espacio = r.id_espacio"
+                    + " JOIN zona z     ON z.id_zona = e.id_zona"
                     + " WHERE r.id_registro = ?";
 
     private static final String SELECT_ACTIVOS =
