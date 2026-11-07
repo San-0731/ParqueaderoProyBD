@@ -6,8 +6,9 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 
 // Reglas de calidad del código (npm run lint). El formato lo maneja Prettier.
 export default defineConfig([
-  // dist: compilación; coverage: reporte de npm run test:cobertura (archivos generados).
-  globalIgnores(['dist', 'coverage']),
+  // Archivos generados: dist (compilación), coverage (npm run test:cobertura) y los
+  // resultados de Playwright (npm run test:e2e).
+  globalIgnores(['dist', 'coverage', 'test-results', 'playwright-report']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -25,6 +26,13 @@ export default defineConfig([
     files: ['**/*.test.{js,jsx}', 'src/setupTests.js'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.vitest },
+    },
+  },
+  {
+    // Las pruebas E2E y la configuración de Playwright corren en Node (process, fetch...).
+    files: ['e2e/**/*.js', 'playwright.config.js'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 ]);
