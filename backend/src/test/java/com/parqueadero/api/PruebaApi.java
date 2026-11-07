@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.parqueadero.Servidor;
 import com.parqueadero.integracion.PruebaIntegracion;
+import com.parqueadero.model.Rol;
 import com.parqueadero.util.Json;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -111,8 +112,19 @@ abstract class PruebaApi extends PruebaIntegracion {
      * {@code null} lo envía como JSON.
      */
     protected static RespuestaHttp enviar(String metodo, String ruta, String cuerpo) {
+        return enviar(metodo, ruta, cuerpo, null);
+    }
+
+    /**
+     * Igual que {@link #enviar(String, String, String)}, con el token de una
+     * sesión en {@code Authorization: Bearer <token>} (si no es {@code null}).
+     */
+    protected static RespuestaHttp enviar(String metodo, String ruta, String cuerpo, String token) {
         HttpRequest.Builder peticion = HttpRequest.newBuilder(URI.create(urlBase + ruta))
                 .timeout(Duration.ofSeconds(15));
+        if (token != null) {
+            peticion.header("Authorization", "Bearer " + token);
+        }
         if (cuerpo == null) {
             peticion.method(metodo, HttpRequest.BodyPublishers.noBody());
         } else {
@@ -129,6 +141,34 @@ abstract class PruebaApi extends PruebaIntegracion {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Petición interrumpida: " + metodo + " " + ruta, e);
         }
+    }
+
+    // ------------------------------------------------------------ sesión
+
+    /** Crea un usuario de prueba con el rol pedido (se borra al final de la prueba). */
+    protected UsuarioPrueba crearUsuario(Rol rol) {
+        try (Connection conexion = conexion()) {
+            return crearUsuario(conexion, rol);
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo crear el usuario de prueba: " + e.getMessage(), e);
+        }
+    }
+
+    /** {@code POST /api/auth/login} con el usuario y su contraseña. */
+    protected static RespuestaHttp iniciarSesion(String nombreUsuario, String clave) {
+        return post("/auth/login", json(Map.of("nombreUsuario", nombreUsuario, "clave", clave)));
+    }
+
+    /** Inicia sesión con el usuario de prueba y devuelve el token (falla si no es 200). */
+    protected static String tokenDe(UsuarioPrueba usuario) {
+        RespuestaHttp respuesta = iniciarSesion(usuario.nombreUsuario(), usuario.clave());
+        assertEquals(200, respuesta.estado(), () -> "No se pudo iniciar sesión: " + respuesta.cuerpo());
+        return respuesta.objeto().get("token").getAsString();
+    }
+
+    /** Crea un usuario con el rol pedido, inicia sesión y devuelve el token. */
+    protected String tokenConRol(Rol rol) {
+        return tokenDe(crearUsuario(rol));
     }
 
     /** Convierte un mapa en JSON con la clase {@link Json} del proyecto (sin armar el texto a mano). */

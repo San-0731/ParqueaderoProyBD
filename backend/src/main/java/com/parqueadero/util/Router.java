@@ -2,7 +2,11 @@ package com.parqueadero.util;
 
 import com.parqueadero.exception.DatosInvalidosException;
 import com.parqueadero.exception.MetodoNoPermitidoException;
+import com.parqueadero.exception.NoAutenticadoException;
 import com.parqueadero.exception.RutaNoEncontradaException;
+import com.parqueadero.exception.SinPermisoException;
+import com.parqueadero.model.Rol;
+import com.parqueadero.model.Usuario;
 
 import java.net.URI;
 import java.net.URLDecoder;
@@ -35,6 +39,17 @@ import java.util.Set;
  *   <li>La barra final se ignora: {@code /api/vehiculos/} = {@code /api/vehiculos}.</li>
  * </ul>
  *
+ * <p><b>Sesión y rol.</b> Una ruta puede declarar el rol mínimo que exige
+ * ({@code .get("/api/reportes", Rol.ADMINISTRADOR, manejador)}). En esas rutas,
+ * antes de llamar al manejador, el router convierte el token en el usuario con
+ * el {@link Autenticador}:
+ * <ul>
+ *   <li>sin token, o con un token que no es de una sesión vigente → 401
+ *       ({@link NoAutenticadoException});</li>
+ *   <li>con un rol que no alcanza → 403 ({@link SinPermisoException}).</li>
+ * </ul>
+ * Las rutas registradas sin rol son públicas: no se busca el usuario.
+ *
  * <p>Todas las rutas se registran al arrancar, antes de iniciar el servidor;
  * después el router solo se lee, por eso la lista no necesita sincronización.
  */
@@ -48,6 +63,18 @@ public final class Router {
             List.of("GET", "POST", "PUT", "PATCH", "DELETE");
 
     private final List<Ruta> rutas = new ArrayList<>();
+    private final Autenticador autenticador;
+
+    /** Router sin {@link Autenticador}: ningún token es válido (sirve para las pruebas). */
+    public Router() {
+        this(Autenticador.NINGUNO);
+    }
+
+    public Router(Autenticador autenticador) {
+        this.autenticador = Objects.requireNonNull(autenticador, "El autenticador no puede ser null.");
+    }
+
+    // ---- Rutas públicas (sin sesión) ----
 
     public Router get(String patron, Manejador manejador) {
         return agregar("GET", patron, manejador);
@@ -69,13 +96,41 @@ public final class Router {
         return agregar("DELETE", patron, manejador);
     }
 
+    // ---- Rutas que exigen una sesión con al menos el rol indicado ----
+
+    public Router get(String patron, Rol rolMinimo, Manejador manejador) {
+        return agregar("GET", patron, rolMinimo, manejador);
+    }
+
+    public Router post(String patron, Rol rolMinimo, Manejador manejador) {
+        return agregar("POST", patron, rolMinimo, manejador);
+    }
+
+    public Router put(String patron, Rol rolMinimo, Manejador manejador) {
+        return agregar("PUT", patron, rolMinimo, manejador);
+    }
+
+    public Router patch(String patron, Rol rolMinimo, Manejador manejador) {
+        return agregar("PATCH", patron, rolMinimo, manejador);
+    }
+
+    public Router delete(String patron, Rol rolMinimo, Manejador manejador) {
+        return agregar("DELETE", patron, rolMinimo, manejador);
+    }
+
+    /** Registra una ruta pública (sin sesión). */
+    public Router agregar(String metodo, String patron, Manejador manejador) {
+        return agregar(metodo, patron, null, manejador);
+    }
+
     /**
      * Registra una ruta. Devuelve el mismo router para poder encadenar llamadas.
      *
+     * @param rolMinimo rol que exige la ruta, o {@code null} si es pública
      * @throws IllegalArgumentException si el método no está soportado, el patrón
      *         no empieza con "/" o la misma ruta ya estaba registrada
      */
-    public Router agregar(String metodo, String patron, Manejador manejador) {
+    public Router agregar(String metodo, String patron, Rol rolMinimo, Manejador manejador) {
         String metodoMayusculas = metodo.toUpperCase(Locale.ROOT);
         if (!METODOS_SOPORTADOS.contains(metodoMayusculas)) {
             throw new IllegalArgumentException("Método HTTP no soportado: " + metodo);
@@ -85,7 +140,8 @@ public final class Router {
         }
         Objects.requireNonNull(manejador, "El manejador no puede ser null.");
 
-        Ruta nueva = new Ruta(metodoMayusculas, patron, cortarEnSegmentos(patron), manejador);
+        Ruta nueva = new Ruta(metodoMayusculas, patron, cortarEnSegmentos(patron), rolMinimo,
+                manejador);
         for (Ruta existente : rutas) {
             if (existente.metodo().equals(nueva.metodo()) && existente.forma().equals(nueva.forma())) {
                 throw new IllegalArgumentException("Ruta registrada dos veces: "
@@ -106,18 +162,58 @@ public final class Router {
      * @param metodo método HTTP (GET, POST, ...)
      * @param uri    URI de la petición (ruta y query sin decodificar)
      * @param cuerpo cuerpo de la petición; puede ser {@code null}
+     * @param token  token de la cabecera {@code Authorization}, o {@code null}
      * @return la respuesta del manejador
      * @throws RutaNoEncontradaException  si no existe la ruta (404)
      * @throws MetodoNoPermitidoException si la ruta no acepta el método (405)
      * @throws DatosInvalidosException    si la URL está mal codificada (400)
+     * @throws NoAutenticadoException     si la ruta exige sesión y no la hay (401)
+     * @throws SinPermisoException        si el rol no alcanza (403)
      */
-    public Respuesta despachar(String metodo, URI uri, String cuerpo) {
+    public Respuesta despachar(String metodo, URI uri, String cuerpo, String token) {
         String rutaCruda = uri.getRawPath() != null ? uri.getRawPath() : "/";
         Coincidencia coincidencia = resolver(metodo, rutaCruda);
+        Usuario usuario = comprobarSesion(coincidencia.rolMinimo(), token);
         Map<String, String> parametrosQuery = parsearQuery(uri.getRawQuery());
         Peticion peticion = new Peticion(metodo.toUpperCase(Locale.ROOT), rutaCruda,
-                coincidencia.parametrosRuta(), parametrosQuery, cuerpo);
+                coincidencia.parametrosRuta(), parametrosQuery, cuerpo, token, usuario);
         return coincidencia.manejador().manejar(peticion);
+    }
+
+    /** Igual que {@link #despachar(String, URI, String, String)}, sin token. */
+    public Respuesta despachar(String metodo, URI uri, String cuerpo) {
+        return despachar(metodo, uri, cuerpo, null);
+    }
+
+    /**
+     * En una ruta con rol, busca el usuario del token y comprueba su rol.
+     *
+     * @return el usuario, o {@code null} si la ruta es pública
+     */
+    private Usuario comprobarSesion(Rol rolMinimo, String token) {
+        if (rolMinimo == null) {
+            return null;
+        }
+        if (token == null) {
+            throw new NoAutenticadoException(Peticion.MENSAJE_SIN_SESION);
+        }
+        Usuario usuario = autenticador.autenticar(token)
+                .orElseThrow(() -> new NoAutenticadoException(Peticion.MENSAJE_SESION_INVALIDA));
+        if (!usuario.rol().alcanza(rolMinimo)) {
+            throw new SinPermisoException(mensajeSinPermiso(rolMinimo));
+        }
+        return usuario;
+    }
+
+    /** "Solo un usuario Administrador o DBA puede hacer esto." */
+    static String mensajeSinPermiso(Rol rolMinimo) {
+        List<String> roles = new ArrayList<>();
+        for (Rol rol : Rol.values()) {
+            if (rol.alcanza(rolMinimo)) {
+                roles.add(rol.getNombreVisible());
+            }
+        }
+        return "Solo un usuario " + String.join(" o ", roles) + " puede hacer esto.";
     }
 
     /**
@@ -167,7 +263,8 @@ public final class Router {
         for (int i = 0; i < masEspecificas.size(); i++) {
             Ruta ruta = masEspecificas.get(i);
             if (ruta.metodo().equals(metodoMayusculas)) {
-                return new Coincidencia(ruta.manejador(), parametrosDeCadaUna.get(i));
+                return new Coincidencia(ruta.manejador(), parametrosDeCadaUna.get(i),
+                        ruta.rolMinimo());
             }
             metodosDelCamino.add(ruta.metodo());
         }
@@ -242,12 +339,16 @@ public final class Router {
         }
     }
 
-    /** Resultado de {@link #resolver}: el manejador y los parámetros de la ruta. */
-    record Coincidencia(Manejador manejador, Map<String, String> parametrosRuta) {
+    /**
+     * Resultado de {@link #resolver}: el manejador, los parámetros de la ruta y
+     * el rol que exige ({@code null} si es pública).
+     */
+    record Coincidencia(Manejador manejador, Map<String, String> parametrosRuta, Rol rolMinimo) {
     }
 
     /** Una ruta registrada, con su patrón ya cortado en segmentos. */
-    private record Ruta(String metodo, String patron, List<String> segmentos, Manejador manejador) {
+    private record Ruta(String metodo, String patron, List<String> segmentos, Rol rolMinimo,
+            Manejador manejador) {
 
         private static boolean esParametro(String segmento) {
             return segmento.length() > 2 && segmento.startsWith("{") && segmento.endsWith("}");

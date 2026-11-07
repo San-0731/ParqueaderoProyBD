@@ -22,7 +22,8 @@ import java.nio.charset.StandardCharsets;
  *   <li>Agrega las cabeceras CORS a <b>todas</b> las respuestas, incluidos los errores.</li>
  *   <li>Responde las peticiones {@code OPTIONS} (preflight de CORS) con 204,
  *       antes de buscar la ruta.</li>
- *   <li>Lee el cuerpo, le pide al {@link Router} que despache y obtiene una {@link Respuesta}.</li>
+ *   <li>Lee el cuerpo y el token de la cabecera {@code Authorization: Bearer ...},
+ *       le pide al {@link Router} que despache y obtiene una {@link Respuesta}.</li>
  *   <li>Convierte cualquier excepción en el JSON de error uniforme.</li>
  *   <li>Escribe la respuesta como JSON en UTF-8.</li>
  * </ol>
@@ -33,6 +34,9 @@ import java.nio.charset.StandardCharsets;
 public final class ApiHandler implements HttpHandler {
 
     private static final String TIPO_JSON = "application/json; charset=utf-8";
+
+    /** Esquema de la cabecera Authorization: {@code Bearer <token>}. */
+    private static final String PREFIJO_BEARER = "Bearer ";
 
     /** Métodos que se anuncian por CORS: los del router más OPTIONS. */
     private static final String METODOS_CORS =
@@ -71,7 +75,8 @@ public final class ApiHandler implements HttpHandler {
             throws IOException {
         String cuerpo = new String(intercambio.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
-            return router.despachar(metodo, uri, cuerpo);
+            String token = leerToken(intercambio.getRequestHeaders());
+            return router.despachar(metodo, uri, cuerpo, token);
         } catch (AplicacionException e) {
             if (e instanceof MetodoNoPermitidoException noPermitido) {
                 // HTTP exige la cabecera Allow en las respuestas 405.
@@ -90,7 +95,23 @@ public final class ApiHandler implements HttpHandler {
     private void agregarCabecerasCors(Headers cabeceras) {
         cabeceras.set("Access-Control-Allow-Origin", origenCors);
         cabeceras.set("Access-Control-Allow-Methods", METODOS_CORS);
-        cabeceras.set("Access-Control-Allow-Headers", "Content-Type");
+        // Authorization: el frontend envía ahí el token de la sesión.
+        cabeceras.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+
+    /**
+     * Token de {@code Authorization: Bearer <token>}, o {@code null} si la
+     * cabecera no viene, usa otro esquema o está vacía. "Bearer" se acepta en
+     * mayúsculas o minúsculas, como dice el estándar HTTP.
+     */
+    static String leerToken(Headers cabeceras) {
+        String valor = cabeceras.getFirst("Authorization");
+        if (valor == null || valor.length() <= PREFIJO_BEARER.length()
+                || !valor.regionMatches(true, 0, PREFIJO_BEARER, 0, PREFIJO_BEARER.length())) {
+            return null;
+        }
+        String token = valor.substring(PREFIJO_BEARER.length()).strip();
+        return token.isEmpty() ? null : token;
     }
 
     /**
