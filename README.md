@@ -153,7 +153,9 @@ automáticamente (ver `.vscode/extensions.json`).
 ```
 .
 ├── database/
-│   └── migrations/     # Migraciones SQL versionadas (V{n}__descripcion.sql)
+│   ├── migrations/     # Migraciones SQL versionadas (V{n}__descripcion.sql)
+│   ├── pruebas/        # Scripts SQL y de terminal para revisar las reglas de la base
+│   └── scripts/        # recrear-bd-pruebas.sh: crea la base parqueadero_test
 ├── backend/            # Proyecto Maven (config, model, dao, service, handler, util)
 ├── frontend/           # Proyecto React + Vite + Tailwind CSS
 │   └── src/
@@ -289,10 +291,32 @@ La URL del backend solo se define en `VITE_API_URL`; en el código no hay direcc
 
 | Qué | Comando | Qué revisa |
 |---|---|---|
-| Backend | `cd backend && mvn clean package` | Pruebas JUnit de las reglas del negocio y las utilidades |
+| Backend | `cd backend && mvn clean package` | Pruebas JUnit de las reglas del negocio y las utilidades (no necesitan base de datos) |
+| Integración | `./database/scripts/recrear-bd-pruebas.sh` y luego `cd backend && mvn verify -Pintegracion` | Todas las pruebas JUnit, incluidas las que usan MySQL real (base de datos y API) |
 | Frontend | `cd frontend && npm test -- --run` | Pruebas de Vitest y Testing Library de cada pantalla, sus funciones y la accesibilidad (axe-core) |
 | API a mano | [`backend/api.http`](backend/api.http) con REST Client | Cada petición dice el resultado esperado |
 | Base de datos | [`documentacion/guia_pruebas_base_datos.md`](documentacion/guia_pruebas_base_datos.md) | Consultas, vistas y triggers |
+
+### Pruebas de integración
+
+Usan una base aparte, `parqueadero_test`, dentro del mismo contenedor de MySQL,
+para no ensuciar los datos de trabajo de `parqueadero`. Con MySQL encendido
+(`docker compose up -d`):
+
+```bash
+./database/scripts/recrear-bd-pruebas.sh   # borra y crea parqueadero_test con todas las migraciones
+cd backend && mvn verify -Pintegracion     # pruebas unitarias + integración contra parqueadero_test
+```
+
+- El script lee `DB_ROOT_PASSWORD` y `DB_USER` del `.env`. Se puede ejecutar
+  cuantas veces se quiera; vuelve a dejar la base como recién creada.
+- Sin `-Pintegracion`, Maven salta las pruebas marcadas con `@Tag("integracion")`,
+  así que `mvn clean package` sigue funcionando sin base de datos.
+- Por seguridad, esas pruebas se niegan a correr si `DB_NAME` no termina en
+  `_test`, y el script se niega a borrar una base que no termine en `_test`.
+- Sin Docker (por ejemplo en GitHub Actions):
+  `MODO_MYSQL=directo DB_HOST=127.0.0.1 DB_PORT=3306 ./database/scripts/recrear-bd-pruebas.sh`
+  usa el cliente `mysql` instalado en la máquina.
 
 Las reglas visuales y los componentes del frontend están en
 [`documentacion/guia_diseno_frontend.md`](documentacion/guia_diseno_frontend.md).
