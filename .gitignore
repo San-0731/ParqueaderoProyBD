@@ -8,6 +8,8 @@ node_modules/
 dist/
 *.local
 npm-debug.log*
+# Reporte de cobertura de las pruebas (npm run test:cobertura)
+coverage/
 
 # ---------- IDEs ----------
 .idea/

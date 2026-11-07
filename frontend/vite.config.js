@@ -15,5 +15,13 @@ export default defineConfig({
     globals: true,
     // Se ejecuta antes de cada archivo de pruebas (agrega los matchers de jest-dom).
     setupFiles: './src/setupTests.js',
+    // npm run test:cobertura: qué líneas del código ejecutan las pruebas. El
+    // reporte sale en la terminal y en coverage/index.html (no se versiona).
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/**/*.test.{js,jsx}', 'src/setupTests.js', 'src/main.jsx'],
+    },
   },
 });
