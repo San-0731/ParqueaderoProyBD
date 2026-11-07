@@ -6,6 +6,7 @@ import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { listarVehiculos } from '../../api/vehiculos.js';
 import { codigoEspacio } from '../../utils/espacio.js';
+import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /**
  * Lo que la pantalla necesita al abrirse, en paralelo: los catálogos del registro rápido y
@@ -110,7 +111,7 @@ export function agruparPorPiso(espacios) {
 
 /** Nombre de un tipo de vehículo por su id ("Carro"), o null si no se encuentra. */
 export function nombreTipo(idTipo, tipos) {
-  return tipos.find((tipo) => tipo.idTipo === idTipo)?.nombre ?? null;
+  return nombreTipoVisible(tipos.find((tipo) => tipo.idTipo === idTipo)?.nombre ?? null);
 }
 
 /** Marca y modelo juntos ("Mazda 3"), o null si el vehículo no tiene modelo. */

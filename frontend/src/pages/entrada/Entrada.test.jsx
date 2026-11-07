@@ -256,12 +256,13 @@ describe('Entrada', () => {
   it('el registro rápido continúa el flujo sin salir de la pantalla', async () => {
     listarClientes.mockResolvedValue([LAURA]);
     const { crearVehiculo } = await import('../../api/vehiculos.js');
-    crearVehiculo.mockImplementation(async (datos) => ({ idVehiculo: 60, ...datos }));
+    // El backend asigna el tipo según la placa: KLM999 es Carro (idTipo 3).
+    crearVehiculo.mockImplementation(async (datos) => ({ idVehiculo: 60, idTipo: 3, ...datos }));
     const usuario = await renderizar('/entrada?idEspacio=3');
 
     await buscar(usuario, 'KLM999');
-    // El tipo viene sugerido por el espacio elegido en el tablero (Carro).
-    expect(await screen.findByRole('combobox', { name: 'Tipo de vehículo' })).toHaveValue('3');
+    // El tipo no se elige: sale de la placa.
+    expect(await screen.findByText('Tipo de vehículo, según la placa')).toBeInTheDocument();
     await usuario.type(
       screen.getByRole('textbox', { name: 'Documento del propietario' }),
       '1012345678',

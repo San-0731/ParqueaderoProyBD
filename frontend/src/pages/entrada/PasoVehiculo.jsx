@@ -33,7 +33,6 @@ function PasoVehiculo({
   errorBusqueda,
   resultado,
   catalogos,
-  idTipoSugerido,
   onRegistrado,
   onCorregir,
 }) {
@@ -71,7 +70,6 @@ function PasoVehiculo({
           <Resultado
             resultado={resultado}
             catalogos={catalogos}
-            idTipoSugerido={idTipoSugerido}
             onRegistrado={onRegistrado}
             onCorregir={onCorregir}
           />
@@ -82,7 +80,7 @@ function PasoVehiculo({
 }
 
 /** Lo que se muestra debajo del buscador según lo que se encontró. */
-function Resultado({ resultado, catalogos, idTipoSugerido, onRegistrado, onCorregir }) {
+function Resultado({ resultado, catalogos, onRegistrado, onCorregir }) {
   const { identificador, ficha } = resultado;
   const { tipos, marcas, modelos } = catalogos;
 
@@ -90,10 +88,8 @@ function Resultado({ resultado, catalogos, idTipoSugerido, onRegistrado, onCorre
     return (
       <FormularioVehiculo
         identificador={identificador}
-        tipos={tipos}
         marcas={marcas}
         modelos={modelos}
-        idTipoInicial={idTipoSugerido}
         onRegistrado={onRegistrado}
         onCorregirPlaca={onCorregir}
       />

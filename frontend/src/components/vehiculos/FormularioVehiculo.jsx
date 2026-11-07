@@ -6,6 +6,7 @@ import Alerta from '../ui/Alerta.jsx';
 import Boton from '../ui/Boton.jsx';
 import Campo from '../ui/Campo.jsx';
 import Placa from '../ui/Placa.jsx';
+import { nombreTipoVisible, tipoSegunPlaca, TIPOS } from '../../utils/tipoVehiculo.js';
 import Selector from '../ui/Selector.jsx';
 import SeccionPropietario from './SeccionPropietario.jsx';
 import {
@@ -19,7 +20,8 @@ import {
 
 /**
  * Registro rápido de un vehículo con su propietario. La placa ya viene de la búsqueda, así
- * que no se vuelve a escribir: se muestra como placa y se puede corregir.
+ * que no se vuelve a escribir: se muestra como placa y se puede corregir. El tipo no se elige:
+ * sale de la placa (utils/tipoVehiculo.js) y lo asigna el backend.
  *
  * Al guardar:
  *   1. si el propietario es nuevo, POST /clientes (y se recuerda: un reintento no lo duplica);
@@ -27,23 +29,12 @@ import {
  *   3. onRegistrado({ vehiculo, propietario, registroActivo: null }).
  * Los errores del backend (por ejemplo, 409 de placa repetida) se muestran con su mensaje.
  *
- * <FormularioVehiculo identificador="KLM999" tipos={...} marcas={...} modelos={...}
- *                     idTipoInicial={3} onRegistrado={...} onCorregirPlaca={...} />
- *
- * @param idTipoInicial tipo sugerido (por ejemplo, el del espacio elegido en el tablero)
+ * <FormularioVehiculo identificador="KLM999" marcas={...} modelos={...}
+ *                     onRegistrado={...} onCorregirPlaca={...} />
  */
-function FormularioVehiculo({
-  identificador,
-  tipos,
-  marcas,
-  modelos,
-  idTipoInicial,
-  onRegistrado,
-  onCorregirPlaca,
-}) {
+function FormularioVehiculo({ identificador, marcas, modelos, onRegistrado, onCorregirPlaca }) {
   // Los valores del formulario se guardan como texto (así los entregan los <select>).
   const [valores, setValores] = useState({
-    idTipo: idTipoInicial ? String(idTipoInicial) : '',
     idMarca: '',
     idModelo: '',
     color: '',
@@ -80,6 +71,7 @@ function FormularioVehiculo({
   }
 
   const modelosDeMarca = modelos.filter((modelo) => String(modelo.idMarca) === valores.idMarca);
+  const tipo = tipoSegunPlaca(identificador);
 
   async function registrar(evento) {
     evento.preventDefault();
@@ -126,20 +118,12 @@ function FormularioVehiculo({
         )}
       </div>
       <p className="-mt-3 text-tenue">
-        Regístralo para continuar. Solo el tipo y el propietario son obligatorios.
+        Regístralo para continuar. Solo el propietario es obligatorio; el tipo sale de la placa.
       </p>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-lg font-semibold">Datos del vehículo</legend>
-        <Selector
-          etiqueta="Tipo de vehículo"
-          placeholder="Elige el tipo"
-          opciones={tipos.map((tipo) => ({ valor: String(tipo.idTipo), texto: tipo.nombre }))}
-          value={valores.idTipo}
-          onChange={cambiar('idTipo')}
-          error={errores.idTipo}
-          className="sm:col-span-2"
-        />
+        <TipoSegunPlaca tipo={tipo} />
         <Selector
           etiqueta="Marca (opcional)"
           placeholder="Sin marca"
@@ -204,6 +188,25 @@ function FormularioVehiculo({
         </Boton>
       </div>
     </form>
+  );
+}
+
+/**
+ * El tipo calculado a partir de la placa. Si sale Bicicleta (la placa no tiene forma de carro,
+ * moto ni camión) se avisa, porque también puede ser una placa mal escrita (ABC1234).
+ */
+function TipoSegunPlaca({ tipo }) {
+  return (
+    <div className="rounded-lg bg-concreto px-4 py-3 sm:col-span-2">
+      <p className="text-sm text-tenue">Tipo de vehículo, según la placa</p>
+      <p className="text-lg font-semibold">{nombreTipoVisible(tipo)}</p>
+      {tipo === TIPOS.BICICLETA && (
+        <p className="mt-1 text-sm">
+          No tiene forma de placa de carro (ABC123), moto (ABC12D) ni camión de carga pesada (R12345
+          o S12345), así que se registra como bicicleta. Si es un error, corrige la placa.
+        </p>
+      )}
+    </div>
   );
 }
 

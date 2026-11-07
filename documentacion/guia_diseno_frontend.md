@@ -183,6 +183,25 @@ pantalla necesita mostrar un espacio fuera de servicio, se reutiliza esta clase.
   dedo en una tablet.
 - **Animaciones:** solo con `motion-safe:`, para respetar la opción de "reducir movimiento".
 
+## Tipos de vehículo
+
+- **El tipo sale de la placa.** El operador no lo elige. La regla está en `utils/tipoVehiculo.js`
+  (`tipoSegunPlaca`) y es la misma del backend (`TipoPorPlaca.java`):
+
+  | Placa | Tipo |
+  |---|---|
+  | `ABC123` | Carro |
+  | `ABC12D` | Moto |
+  | `R12345` o `S12345` | Camión |
+  | Cualquier otra | Bicicleta |
+
+  Si se cambia una, hay que cambiar la otra.
+- **Nombre en pantalla.** Todo tipo que se muestre pasa por `nombreTipoVisible()`, que muestra
+  "Camión" como **"Camión de carga pesada"**. En la base y el backend sigue llamándose "Camión".
+  Las pantallas nuevas, como el historial y los reportes, también deben usarlo.
+- **Placa y tipo no se editan.** Después de registrar el vehículo no se pueden cambiar; el backend
+  responde 400 si se intenta.
+
 ## Textos
 
 - Escribe desde el punto de vista del operador, en voz activa.

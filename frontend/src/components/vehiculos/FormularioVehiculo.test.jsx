@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { ErrorApi } from '../../api/cliente.js';
 import { crearCliente, listarClientes } from '../../api/clientes.js';
 import { crearVehiculo } from '../../api/vehiculos.js';
-import { LAURA, MARCAS, MODELOS, TIPOS } from '../../pages/entrada/datosPrueba.js';
+import { LAURA, MARCAS, MODELOS } from '../../pages/entrada/datosPrueba.js';
 import FormularioVehiculo from './FormularioVehiculo.jsx';
 
 vi.mock('../../api/clientes.js', () => ({ listarClientes: vi.fn(), crearCliente: vi.fn() }));
@@ -15,7 +15,6 @@ function renderizar(props = {}) {
   render(
     <FormularioVehiculo
       identificador="KLM999"
-      tipos={TIPOS}
       marcas={MARCAS}
       modelos={MODELOS}
       onRegistrado={onRegistrado}
@@ -50,10 +49,13 @@ describe('FormularioVehiculo', () => {
 
   it('con un propietario existente registra el vehículo con su idCliente', async () => {
     listarClientes.mockResolvedValue([LAURA]);
-    const { usuario, onRegistrado } = renderizar({ idTipoInicial: 3 });
+    const { usuario, onRegistrado } = renderizar();
 
-    // El tipo viene sugerido (por ejemplo, del espacio elegido en el tablero).
-    expect(screen.getByRole('combobox', { name: 'Tipo de vehículo' })).toHaveValue('3');
+    // No hay selector de tipo: sale de la placa (KLM999 tiene forma de placa de carro).
+    expect(screen.queryByRole('combobox', { name: /Tipo/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Tipo de vehículo, según la placa').nextSibling).toHaveTextContent(
+      'Carro',
+    );
     await buscarPropietario(usuario, '1.012.345.678');
     expect(screen.getByRole('status')).toHaveTextContent('Laura Camila Pérez ya está registrado');
     expect(listarClientes).toHaveBeenCalledWith({ documento: '1012345678' });
@@ -61,9 +63,9 @@ describe('FormularioVehiculo', () => {
     await usuario.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
 
     expect(crearCliente).not.toHaveBeenCalled();
+    // Sin idTipo: el backend lo asigna según la placa.
     expect(crearVehiculo).toHaveBeenCalledWith({
       identificador: 'KLM999',
-      idTipo: 3,
       idCliente: 7,
       idModelo: null,
       color: null,
@@ -81,10 +83,6 @@ describe('FormularioVehiculo', () => {
     crearCliente.mockResolvedValue({ ...LAURA, idCliente: 99, documento: '555' });
     const { usuario, onRegistrado } = renderizar();
 
-    await usuario.selectOptions(
-      screen.getByRole('combobox', { name: 'Tipo de vehículo' }),
-      'Carro',
-    );
     await usuario.selectOptions(
       screen.getByRole('combobox', { name: 'Marca (opcional)' }),
       'Mazda',
@@ -105,7 +103,7 @@ describe('FormularioVehiculo', () => {
       telefono: null,
     });
     expect(crearVehiculo).toHaveBeenCalledWith(
-      expect.objectContaining({ idCliente: 99, idTipo: 3, idModelo: 10, anio: 2020 }),
+      expect.objectContaining({ idCliente: 99, idModelo: 10, anio: 2020 }),
     );
     expect(onRegistrado).toHaveBeenCalled();
   });
@@ -119,9 +117,6 @@ describe('FormularioVehiculo', () => {
     );
     await usuario.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
 
-    expect(screen.getByRole('combobox', { name: 'Tipo de vehículo' })).toHaveAccessibleDescription(
-      'Elige el tipo de vehículo.',
-    );
     expect(screen.getByRole('combobox', { name: 'Modelo (opcional)' })).toHaveAccessibleDescription(
       'Elige también el modelo o deja la marca vacía.',
     );
@@ -130,6 +125,23 @@ describe('FormularioVehiculo', () => {
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Revisa los datos marcados');
     expect(crearVehiculo).not.toHaveBeenCalled();
+  });
+
+  it('muestra el camión como "Camión de carga pesada"', () => {
+    renderizar({ identificador: 'R48213' });
+
+    expect(screen.getByText('Camión de carga pesada')).toBeInTheDocument();
+    expect(screen.queryByText(/se registra como bicicleta/)).not.toBeInTheDocument();
+  });
+
+  it('si la placa no tiene forma de carro, moto ni camión, avisa que queda como bicicleta', () => {
+    // Por ejemplo, una placa de carro mal escrita (un número de más).
+    renderizar({ identificador: 'ABC1234' });
+
+    expect(screen.getByText('Bicicleta')).toBeInTheDocument();
+    expect(
+      screen.getByText(/se registra como bicicleta. Si es un error, corrige la placa/),
+    ).toBeInTheDocument();
   });
 
   it('la marca filtra los modelos', async () => {
@@ -153,7 +165,7 @@ describe('FormularioVehiculo', () => {
     crearVehiculo.mockRejectedValue(
       new ErrorApi(409, 'CONFLICTO', 'Ya existe un vehículo con esa placa o código.'),
     );
-    const { usuario, onRegistrado } = renderizar({ idTipoInicial: 3 });
+    const { usuario, onRegistrado } = renderizar();
 
     await buscarPropietario(usuario, '1012345678');
     await usuario.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
@@ -169,7 +181,7 @@ describe('FormularioVehiculo', () => {
     listarClientes.mockResolvedValue([]);
     crearCliente.mockResolvedValue({ ...LAURA, idCliente: 99, documento: '555' });
     crearVehiculo.mockRejectedValueOnce(new ErrorApi(0, 'SIN_CONEXION', 'Sin conexión.'));
-    const { usuario, onRegistrado } = renderizar({ idTipoInicial: 3 });
+    const { usuario, onRegistrado } = renderizar();
 
     await buscarPropietario(usuario, '555');
     await usuario.type(screen.getByRole('textbox', { name: 'Nombres' }), 'Andrés');
