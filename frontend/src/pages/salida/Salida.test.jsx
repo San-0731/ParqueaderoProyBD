@@ -44,10 +44,10 @@ describe('Salida (vehículos dentro)', () => {
 
     const filas = await screen.findAllByRole('listitem');
     expect(filas).toHaveLength(3);
-    const enlace = within(lista()).getByRole('link', { name: /^Cobrar salida de MVC 054/ });
+    const enlace = within(lista()).getByRole('link', { name: /^MVC 054 / });
     expect(enlace).toHaveAttribute('href', '/salida/28');
     expect(enlace).toHaveAccessibleName(
-      'Cobrar salida de MVC 054, espacio A-02, piso 1, dentro desde 06/11/2026 12:18 p. m., 6 h 35 min',
+      'MVC 054 A-02, piso 1 Carro, Laura Camila Pérez Entró el 06/11/2026 12:18 p. m. 6 h 35 min dentro Cobrar salida',
     );
     expect(within(filas[0]).getByText('6 h 35 min')).toBeInTheDocument();
     expect(within(filas[0]).getByText('Carro, Laura Camila Pérez')).toBeInTheDocument();
