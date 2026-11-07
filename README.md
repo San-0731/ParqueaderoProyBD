@@ -168,6 +168,7 @@ automáticamente (ver `.vscode/extensions.json`).
 │       ├── pages/      # Una carpeta por pantalla, con sus piezas y sus funciones puras
 │       └── utils/      # Formato de pesos y fechas, placas, tipos de vehículo, rangos de fechas
 ├── documentacion/      # Guías (Docker, diseño del frontend, pruebas de la base) y capturas
+│   └── pruebas/        # Plan de pruebas manual, casos de prueba y matriz de trazabilidad
 ├── .github/            # Integración continua (workflows/ci.yml) y plantilla de bugs
 ├── .vscode/            # Extensiones recomendadas para el equipo
 ├── docker-compose.yml  # MySQL 8 (se crea en la Fase 1; usa el .env de la raíz)
@@ -322,6 +323,7 @@ La URL del backend solo se define en `VITE_API_URL`; en el código no hay direcc
 | Extremo a extremo (E2E) | `cd frontend && npm run test:e2e` | Flujos completos en un Chromium real con Playwright (ver abajo) |
 | API a mano | [`backend/api.http`](backend/api.http) con REST Client | Cada petición dice el resultado esperado |
 | Base de datos | [`documentacion/guia_pruebas_base_datos.md`](documentacion/guia_pruebas_base_datos.md) | Consultas, vistas y triggers |
+| Manuales (equipo de testing) | [`documentacion/pruebas/plan-de-pruebas.md`](documentacion/pruebas/plan-de-pruebas.md) | Casos contra el enunciado en [`casos-de-prueba.md`](documentacion/pruebas/casos-de-prueba.md) y su [matriz de trazabilidad](documentacion/pruebas/matriz-trazabilidad.md) |
 
 ### Pruebas de integración
 
