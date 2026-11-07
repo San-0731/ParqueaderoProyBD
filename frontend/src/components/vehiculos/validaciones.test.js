@@ -104,6 +104,10 @@ describe('validarVehiculo', () => {
     expect(validarVehiculo({ ...valido, idMarca: '3', idModelo: '10' })).toEqual({});
   });
 
+  it('un vehículo de la API sin color ni año (null) no tiene errores', () => {
+    expect(validarVehiculo({ idMarca: null, idModelo: null, color: null, anio: null })).toEqual({});
+  });
+
   it('color de más de 30 caracteres', () => {
     expect(validarVehiculo({ ...valido, color: 'x'.repeat(31) }).color).toBe(
       'El color no puede tener más de 30 caracteres.',
@@ -150,6 +154,21 @@ describe('cuerpos para la API', () => {
       idModelo: 11,
       color: 'Azul',
       anio: 2021,
+    });
+  });
+
+  it('vehículo para editar: borrar modelo, color y año los envía como null', () => {
+    expect(vehiculoParaActualizar({ idModelo: '', color: '  ', anio: '' }, 8)).toEqual({
+      idCliente: 8,
+      idModelo: null,
+      color: null,
+      anio: null,
+    });
+    expect(vehiculoParaActualizar({ idModelo: null, color: null, anio: null }, 8)).toEqual({
+      idCliente: 8,
+      idModelo: null,
+      color: null,
+      anio: null,
     });
   });
 });

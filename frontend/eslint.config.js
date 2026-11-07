@@ -6,7 +6,8 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 
 // Reglas de calidad del código (npm run lint). El formato lo maneja Prettier.
 export default defineConfig([
-  globalIgnores(['dist']),
+  // dist: compilación; coverage: reporte de npm run test:cobertura (archivos generados).
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

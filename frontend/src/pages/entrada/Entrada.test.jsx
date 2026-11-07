@@ -253,6 +253,99 @@ describe('Entrada', () => {
     expect(listarVehiculos).not.toHaveBeenCalled();
   });
 
+  it('si no cargan los espacios, muestra el error y "Reintentar" vuelve a cargar', async () => {
+    listarEspacios
+      .mockRejectedValueOnce(
+        new ErrorApi(0, 'SIN_CONEXION', 'No se pudo conectar con el servidor.'),
+      )
+      .mockResolvedValue(ESPACIOS);
+    const usuario = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/entrada']}>
+        <ProveedorNotificaciones>
+          <Routes>
+            <Route path="/entrada" element={<Entrada />} />
+          </Routes>
+        </ProveedorNotificaciones>
+      </MemoryRouter>,
+    );
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('No se pudo cargar la pantalla');
+    expect(alerta).toHaveTextContent('No se pudo conectar con el servidor.');
+    expect(screen.queryByRole('textbox', { name: 'Placa o código' })).not.toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('textbox', { name: 'Placa o código' })).toBeInTheDocument();
+  });
+
+  describe('propietario en el registro rápido', () => {
+    const campoDocumento = () => screen.getByRole('textbox', { name: 'Documento del propietario' });
+
+    async function abrirRegistroRapido() {
+      const usuario = await renderizar();
+      await buscar(usuario, 'KLM999');
+      await screen.findByText(/no está registrado/);
+      return usuario;
+    }
+
+    it('un documento vacío o con símbolos no consulta y explica por qué', async () => {
+      const usuario = await abrirRegistroRapido();
+
+      await usuario.click(screen.getByRole('button', { name: 'Buscar propietario' }));
+      expect(campoDocumento()).toHaveAccessibleDescription(
+        expect.stringContaining('El documento del cliente es obligatorio.'),
+      );
+
+      await usuario.type(campoDocumento(), '10#45');
+      await usuario.click(screen.getByRole('button', { name: 'Buscar propietario' }));
+      expect(campoDocumento()).toHaveAccessibleDescription(
+        expect.stringContaining('El documento solo puede tener letras (A-Z) y números.'),
+      );
+      expect(listarClientes).not.toHaveBeenCalled();
+    });
+
+    it('Enter en el documento busca el propietario (sin enviar el formulario)', async () => {
+      listarClientes.mockResolvedValue([LAURA]);
+      const usuario = await abrirRegistroRapido();
+
+      await usuario.type(campoDocumento(), '1.012.345.678{Enter}');
+
+      expect(listarClientes).toHaveBeenCalledWith({ documento: '1012345678' });
+      expect(await screen.findByText(/ya está registrado como propietario/)).toBeInTheDocument();
+      expect(registrarEntrada).not.toHaveBeenCalled();
+    });
+
+    it('un documento que no existe pide los datos del propietario nuevo', async () => {
+      listarClientes.mockResolvedValue([]);
+      const usuario = await abrirRegistroRapido();
+
+      await usuario.type(campoDocumento(), '99887766');
+      await usuario.click(screen.getByRole('button', { name: 'Buscar propietario' }));
+
+      expect(
+        await screen.findByText(/No hay un propietario con el documento 99887766/),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Nombres' })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Apellidos' })).toBeInTheDocument();
+    });
+
+    it('si falla la búsqueda del propietario muestra el error del servidor', async () => {
+      listarClientes.mockRejectedValue(
+        new ErrorApi(0, 'SIN_CONEXION', 'No se pudo conectar con el servidor.'),
+      );
+      const usuario = await abrirRegistroRapido();
+
+      await usuario.type(campoDocumento(), '1012345678');
+      await usuario.click(screen.getByRole('button', { name: 'Buscar propietario' }));
+
+      const alerta = await screen.findByRole('alert');
+      expect(alerta).toHaveTextContent('No se pudo buscar el propietario');
+      expect(alerta).toHaveTextContent('No se pudo conectar con el servidor.');
+    });
+  });
+
   it('el registro rápido continúa el flujo sin salir de la pantalla', async () => {
     listarClientes.mockResolvedValue([LAURA]);
     const { crearVehiculo } = await import('../../api/vehiculos.js');

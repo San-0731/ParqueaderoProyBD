@@ -264,6 +264,7 @@ npm install
 | `npm run dev`       | Servidor de desarrollo en http://localhost:5173 (recarga en caliente) |
 | `npm test -- --run` | Ejecuta las pruebas una vez (Vitest + Testing Library)          |
 | `npm test`          | Ejecuta las pruebas en modo observador (se repiten al guardar)  |
+| `npm run test:cobertura` | Ejecuta las pruebas y muestra qué parte del código cubren (reporte en `frontend/coverage/index.html`) |
 | `npm run build`     | Compila la versión de producción en `frontend/dist/`            |
 | `npm run preview`   | Sirve localmente la versión compilada                           |
 | `npm run lint`      | Revisa la calidad del código con ESLint                         |
@@ -294,6 +295,7 @@ La URL del backend solo se define en `VITE_API_URL`; en el código no hay direcc
 | Backend | `cd backend && mvn clean package` | Pruebas JUnit de las reglas del negocio y las utilidades (no necesitan base de datos) |
 | Integración | `./database/scripts/recrear-bd-pruebas.sh` y luego `cd backend && mvn verify -Pintegracion` | Todas las pruebas JUnit, incluidas las que usan MySQL real (base de datos y API) |
 | Frontend | `cd frontend && npm test -- --run` | Pruebas de Vitest y Testing Library de cada pantalla, sus funciones y la accesibilidad (axe-core) |
+| Cobertura del frontend | `cd frontend && npm run test:cobertura` | Las mismas pruebas, con el porcentaje de código que ejecutan (no se persigue un número) |
 | API a mano | [`backend/api.http`](backend/api.http) con REST Client | Cada petición dice el resultado esperado |
 | Base de datos | [`documentacion/guia_pruebas_base_datos.md`](documentacion/guia_pruebas_base_datos.md) | Consultas, vistas y triggers |
 
