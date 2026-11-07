@@ -93,11 +93,11 @@ describe('mensajePreseleccion', () => {
 
   it('explica por qué no se puede usar', () => {
     expect(mensajePreseleccion(revisar(5, 3), TIPOS, 'Carro')).toBe(
-      'El espacio M-01 que elegiste en el tablero es para Moto y este vehículo es Carro. ' +
+      'El espacio M1-01 que elegiste en el tablero es para Moto y este vehículo es Carro. ' +
         'Elige uno de estos.',
     );
     expect(mensajePreseleccion(revisar(2, 3), TIPOS, 'Carro')).toBe(
-      'El espacio A-02 que elegiste en el tablero ya no está libre. Elige otro.',
+      'El espacio A1-02 que elegiste en el tablero ya no está libre. Elige otro.',
     );
     expect(mensajePreseleccion(revisar(999, 3), TIPOS, 'Carro')).toBe(
       'El espacio que llegó en el enlace no existe. Elige uno de la lista.',

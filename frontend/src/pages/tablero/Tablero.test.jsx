@@ -60,20 +60,22 @@ describe('Tablero', () => {
     renderizar();
 
     const libre = await screen.findByRole('link', {
-      name: 'A-01 Libre (piso 1): registrar entrada',
+      name: 'A1-01 Libre (piso 1): registrar entrada',
     });
     expect(libre).toHaveAttribute('href', '/entrada?idEspacio=1');
     expect(within(libre).getByText('Libre')).toBeInTheDocument();
+    // La zona se nombra con la letra y el piso (V006): la A del piso 1 es la A1.
+    expect(screen.getByRole('heading', { level: 3, name: 'Zona A1' })).toBeInTheDocument();
 
     const ocupado = screen.getByRole('link', {
-      name: 'A-02 KLM 234 2 h 15 min (piso 1, ocupado): registrar salida',
+      name: 'A1-02 KLM 234 2 h 15 min (piso 1, ocupado): registrar salida',
     });
     expect(ocupado).toHaveAttribute('href', '/salida/28');
     expect(within(ocupado).getByText('KLM 234')).toBeInTheDocument();
     expect(within(ocupado).getByText('2 h 15 min')).toBeInTheDocument();
 
     const deshabilitado = screen.getByRole('button', {
-      name: 'A-03 Deshabilitado (piso 1)',
+      name: 'A1-03 Deshabilitado (piso 1)',
     });
     expect(within(deshabilitado).getByText('Deshabilitado')).toBeInTheDocument();
   });
@@ -81,7 +83,7 @@ describe('Tablero', () => {
   it('un espacio deshabilitado con un vehículo adentro se muestra ocupado', async () => {
     renderizar();
 
-    const espacio = await screen.findByRole('link', { name: /^B-01 / });
+    const espacio = await screen.findByRole('link', { name: /^B2-01 / });
     expect(espacio).toHaveAttribute('href', '/salida/29');
     expect(espacio).toHaveAccessibleName(/Deshabilitado \(piso 2, ocupado\): registrar salida$/);
     expect(within(espacio).getByText('Deshabilitado')).toBeInTheDocument();
@@ -112,31 +114,31 @@ describe('Tablero', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('link', { name: /^M-01 / })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /^A-01 / })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^M1-01 / })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^A1-01 / })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Piso 2' })).not.toBeInTheDocument();
     expect(ubicacion()).toBe('/?tipo=1');
 
     await usuario.click(within(letrero()).getByRole('button', { name: /^Todos/ }));
-    expect(screen.getByRole('link', { name: /^A-01 / })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^A1-01 / })).toBeInTheDocument();
     expect(ubicacion()).toBe('/');
   });
 
   it('si la URL trae ?tipo= el tablero llega ya filtrado', async () => {
     renderizar('/?tipo=3');
 
-    await screen.findByRole('link', { name: /^A-01 / });
+    await screen.findByRole('link', { name: /^A1-01 / });
     expect(within(letrero()).getByRole('button', { name: /^Carro/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(screen.queryByRole('link', { name: /^M-01 / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^M1-01 / })).not.toBeInTheDocument();
   });
 
   it('un ?tipo= inválido muestra todos los espacios', async () => {
     renderizar('/?tipo=abc');
 
-    await screen.findByRole('link', { name: /^M-01 / });
+    await screen.findByRole('link', { name: /^M1-01 / });
     expect(within(letrero()).getByRole('button', { name: /^Todos/ })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -147,7 +149,7 @@ describe('Tablero', () => {
     const usuario = userEvent.setup();
     renderizar();
 
-    await usuario.click(await screen.findByRole('link', { name: /^A-01 / }));
+    await usuario.click(await screen.findByRole('link', { name: /^A1-01 / }));
 
     expect(ubicacion()).toBe('/entrada?idEspacio=1');
   });
@@ -156,9 +158,9 @@ describe('Tablero', () => {
     const usuario = userEvent.setup();
     renderizar();
 
-    await usuario.click(await screen.findByRole('button', { name: /^A-03 / }));
+    await usuario.click(await screen.findByRole('button', { name: /^A1-03 / }));
 
-    const aviso = screen.getByRole('dialog', { name: 'Espacio A-03 deshabilitado' });
+    const aviso = screen.getByRole('dialog', { name: 'Espacio A1-03 deshabilitado' });
     expect(aviso).toHaveTextContent('Está fuera de servicio y no recibe vehículos.');
     expect(
       within(aviso).getByRole('link', { name: 'Ir a administración de espacios' }),
@@ -182,7 +184,7 @@ describe('Tablero', () => {
 
     await usuario.click(within(alerta).getByRole('button', { name: 'Reintentar' }));
 
-    expect(await screen.findByRole('link', { name: /^A-01 / })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^A1-01 / })).toBeInTheDocument();
     expect(listarEspacios).toHaveBeenCalledTimes(2);
   });
 
@@ -199,9 +201,9 @@ describe('Tablero', () => {
   it('el botón "Actualizar" vuelve a consultar y muestra los datos nuevos', async () => {
     const usuario = userEvent.setup();
     renderizar();
-    await screen.findByRole('link', { name: /^A-01 Libre/ });
+    await screen.findByRole('link', { name: /^A1-01 Libre/ });
 
-    // Mientras tanto, entró un vehículo al A-01.
+    // Mientras tanto, entró un vehículo al A1-01.
     listarEspacios.mockResolvedValue(
       ESPACIOS.map((espacio) =>
         espacio.idEspacio === 1 ? { ...espacio, ocupado: true } : espacio,
@@ -210,7 +212,7 @@ describe('Tablero', () => {
     await usuario.click(screen.getByRole('button', { name: 'Actualizar' }));
 
     expect(
-      await screen.findByRole('link', { name: 'A-01 Ocupado (piso 1): ver vehículos dentro' }),
+      await screen.findByRole('link', { name: 'A1-01 Ocupado (piso 1): ver vehículos dentro' }),
     ).toHaveAttribute('href', '/salida');
     expect(listarEspacios).toHaveBeenCalledTimes(2);
   });
@@ -220,7 +222,7 @@ describe('Tablero', () => {
     vi.useFakeTimers();
     renderizar();
     await act(() => vi.advanceTimersByTimeAsync(0));
-    expect(screen.getByRole('link', { name: /^A-01 / })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^A1-01 / })).toBeInTheDocument();
     expect(listarEspacios).toHaveBeenCalledTimes(1);
 
     await act(() => vi.advanceTimersByTimeAsync(29_999));
