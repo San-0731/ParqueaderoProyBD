@@ -174,6 +174,16 @@ Se ejecutan **desde la raíz del repositorio** (donde está `docker-compose.yml`
 > MySQL ejecuta otra vez las migraciones desde cero. Úsalo solo cuando quieras
 > reiniciar la base a propósito (por ejemplo, antes de las pruebas).
 
+> **Corrección de `V003__datos_prueba.sql` (noviembre de 2026).** El camión de prueba pasó de
+> `TSR482` a `R48213`, para cumplir la regla del tipo según la placa. Esta vez se editó la migración
+> existente por decisión del equipo, una excepción a la regla "nunca modificar una migración ya
+> existente". Como MySQL solo corre las migraciones con el volumen vacío, cada integrante debe
+> recrear su base una vez:
+>
+> ```bash
+> docker compose down -v && docker compose up -d
+> ```
+
 ### Ver qué está pasando
 
 ```bash
