@@ -5,7 +5,7 @@ import App from './App.jsx';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 
 // Ninguna pantalla debe llamar al backend real: las consultas quedan pendientes para siempre
-// (el indicador del servidor, el tablero y la entrada se quedan en "cargando").
+// (el indicador del servidor y cada pantalla se quedan en "cargando").
 // vi.hoisted: vi.mock se mueve al inicio del archivo, así que la función también debe ir ahí.
 const { pendiente } = vi.hoisted(() => ({ pendiente: () => vi.fn(() => new Promise(() => {})) }));
 vi.mock('./api/salud.js', () => ({ consultarSalud: pendiente() }));
@@ -14,11 +14,15 @@ vi.mock('./api/reportes.js', () => ({ consultarOcupacion: pendiente() }));
 vi.mock('./api/registros.js', () => ({
   listarActivos: pendiente(),
   registrarEntrada: pendiente(),
+  obtenerRegistro: pendiente(),
+  consultarLiquidacion: pendiente(),
+  registrarSalida: pendiente(),
 }));
 vi.mock('./api/catalogos.js', () => ({
   listarTiposVehiculo: pendiente(),
   listarMarcas: pendiente(),
   listarModelos: pendiente(),
+  listarMetodosPago: pendiente(),
 }));
 vi.mock('./api/vehiculos.js', () => ({ listarVehiculos: pendiente(), crearVehiculo: pendiente() }));
 vi.mock('./api/clientes.js', () => ({
@@ -60,11 +64,11 @@ describe('navegación', () => {
     expect(document.title).toBe('Historial de parqueos | Parqueadero');
   });
 
-  it('la liquidación recibe el número de registro y deja activo "Salida"', () => {
+  it('el cobro recibe el número de registro y deja activo "Salida"', () => {
     renderizarEn('/salida/28');
 
-    expect(titulo('Liquidación y pago')).toBeInTheDocument();
-    expect(screen.getByText('Cobro de la salida del registro 28.')).toBeInTheDocument();
+    expect(titulo('Cobrar salida')).toBeInTheDocument();
+    expect(screen.getByText(/^Parqueo N\.º 28:/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Salida' })).toHaveAttribute('aria-current', 'page');
   });
 

@@ -50,6 +50,7 @@ Reglas:
 | `ui/Modal` | Confirmaciones y formularios de edición |
 | `ui/Alerta` | Mensaje dentro de la pantalla: `error`, `exito`, `aviso` o `info` |
 | `ui/Cargando`, `ui/EstadoVacio` | Estados de carga y de "no hay datos" |
+| `ui/IconoActualizando` | Ícono que gira en el botón "Actualizar" mientras llega la respuesta (no lo deshabilita) |
 | `useNotificaciones()` | Avisos flotantes: `notificarExito('Entrada registrada.')` |
 
 Para un enlace que debe verse como botón:
@@ -105,7 +106,7 @@ Los componentes del dominio que usan varias pantallas van en `components/<tema>/
 Las funciones de formato que comparten varias pantallas van en `utils/`. Por ejemplo,
 `utils/espacio.js` tiene `codigoEspacio` ("A-01") y `nombreEspacio` ("A-01, piso 1").
 
-## Flujo por pasos con resumen fijo (entrada; sirve también para la salida)
+## Flujo por pasos con resumen fijo (entrada)
 
 - **Pasos numerados.** Cada paso es una `Tarjeta` cuyo título usa `TituloPaso`
   (`pages/entrada/`): un número en un cuadrito asfalto. Solo se numera lo que de verdad es una
@@ -121,6 +122,45 @@ Las funciones de formato que comparten varias pantallas van en `utils/`. Por eje
 - **Opciones para tocar.** Son radios nativos ocultos (`sr-only`) dentro de un `<label>`
   estilizado, con `has-checked:` y `has-focus-visible:`. Las flechas del teclado funcionan sin
   código extra.
+
+## Salida y cobro (`pages/salida/`)
+
+**Lista de vehículos dentro.** Cada vehículo es una fila con forma de tiquete
+(`FilaVehiculoDentro`):
+- a la izquierda, el "talón" con la `Placa`, separado por una línea punteada (la perforación);
+- a la derecha, el tiempo dentro en grande.
+
+Toda la fila es un enlace con un `aria-label` completo. En celular se apila, sin desplazamiento
+horizontal. El buscador filtra por parte de la placa, y con un solo resultado Enter abre su cobro.
+
+**Cuenta y pago.** En escritorio van en dos columnas (en celular, una debajo de la otra):
+
+| Columna | Contenido |
+|---|---|
+| Izquierda: la cuenta (`CuentaParqueo`) | El valor a pagar va en un panel asfalto con números enormes, como la pantalla de un cajero de parqueadero |
+| Derecha: el pago (`PanelPago`, `lg:sticky`) | Los métodos son tarjetas 2×2 con radios ocultos, igual que los cajones de la entrada; la referencia aparece solo si el método la pide |
+
+- **El frontend no calcula el cobro.** Valor, horas cobradas y tarifa salen de la liquidación del
+  backend; aquí solo se formatean.
+- **Valor fresco antes de confirmar.** Al pulsar "Confirmar pago y salida" se vuelve a pedir la
+  liquidación, y el modal muestra ese valor. Así lo que se le dice al cliente es lo que se cobra,
+  aunque justo haya pasado otra hora.
+- **Valor $ 0** (menos de un minuto): no se piden métodos y el botón dice "Confirmar salida sin
+  cobro".
+
+**Recibo** (`ReciboSalida`): una tirilla de caja angosta, con borde dentado (`@utility
+borde-tirilla` en `index.css`) y separadores punteados. Al mostrarse, el foco va a su título.
+
+**Imprimir.** Se usa la variante `print:` de Tailwind:
+
+| Clase | Dónde |
+|---|---|
+| `print:hidden` | Lo que no debe salir en papel: menú, encabezado, botones y avisos |
+| `print:max-w-[72mm]` | La tirilla, para que quepa en un rollo de 80 mm |
+| `[print-color-adjust:exact]` | Para que la placa salga amarilla |
+
+`window.print()` abre el diálogo del navegador. Para revisar cómo queda impreso sin papel:
+`chromium --headless --print-to-pdf=recibo.pdf <url>`.
 
 ## "Pintura de piso" (tablero de espacios)
 

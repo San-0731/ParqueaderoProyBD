@@ -15,8 +15,8 @@ function Layout() {
         Saltar al contenido
       </a>
       <BarraNavegacion />
-      <main id="contenido" tabIndex={-1} className="outline-none lg:pl-60">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+      <main id="contenido" tabIndex={-1} className="outline-none lg:pl-60 print:pl-0">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10 print:p-0">
           <Outlet />
         </div>
       </main>

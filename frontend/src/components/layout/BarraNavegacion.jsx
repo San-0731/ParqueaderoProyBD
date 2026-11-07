@@ -55,7 +55,7 @@ function BarraNavegacion() {
 
   return (
     <header
-      className="superficie-oscura bg-asfalto text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col"
+      className="superficie-oscura bg-asfalto text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col print:hidden"
       onKeyDown={(evento) => {
         if (evento.key === 'Escape' && abierto) {
           setAbiertoEn(null);
