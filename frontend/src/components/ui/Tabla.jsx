@@ -9,11 +9,18 @@
  *        ]}
  *        pie={{ identificador: 'Total', valorTotal: formatearPesos(total) }} />
  *
- * @param columnas [{ clave, titulo, alinear?: 'derecha', render?: (fila) => contenido }]
+ * @param columnas [{ clave, titulo, alinear?: 'derecha', fija?: true, render?: (fila) => contenido }]
+ *        fija: la columna queda quieta a la izquierda al desplazar la tabla de lado (celular),
+ *        para no perder de vista a qué fila pertenece cada dato (por ejemplo, la placa)
  * @param pie fila final opcional (por ejemplo, totales), con el contenido de cada columna por clave
  */
 function Tabla({ etiqueta, columnas, filas, claveFila, pie }) {
   const alineacion = (columna) => (columna.alinear === 'derecha' ? 'text-right tabular-nums' : '');
+  // La columna fija necesita fondo opaco: si no, al desplazar se vería el texto por detrás.
+  // El encabezado usa el mismo gris de la fila (concreto al 50 % sobre blanco), pero sólido.
+  const fija = (columna, fondo) =>
+    columna.fija ? `sticky left-0 z-10 border-r border-borde ${fondo}` : '';
+  const FONDO_ENCABEZADO = 'bg-[color-mix(in_oklab,var(--color-concreto)_50%,white)]';
 
   return (
     <div
@@ -30,7 +37,7 @@ function Tabla({ etiqueta, columnas, filas, claveFila, pie }) {
               <th
                 key={columna.clave}
                 scope="col"
-                className={`px-4 py-3 text-sm font-semibold text-tenue ${alineacion(columna)}`}
+                className={`px-4 py-3 text-sm font-semibold text-tenue ${alineacion(columna)} ${fija(columna, FONDO_ENCABEZADO)}`}
               >
                 {columna.titulo}
               </th>
@@ -41,7 +48,10 @@ function Tabla({ etiqueta, columnas, filas, claveFila, pie }) {
           {filas.map((fila) => (
             <tr key={fila[claveFila]} className="border-b border-borde last:border-b-0">
               {columnas.map((columna) => (
-                <td key={columna.clave} className={`px-4 py-3 align-middle ${alineacion(columna)}`}>
+                <td
+                  key={columna.clave}
+                  className={`px-4 py-3 align-middle ${alineacion(columna)} ${fija(columna, 'bg-white')}`}
+                >
                   {columna.render ? columna.render(fila) : fila[columna.clave]}
                 </td>
               ))}
@@ -52,7 +62,10 @@ function Tabla({ etiqueta, columnas, filas, claveFila, pie }) {
           <tfoot>
             <tr className="border-t-2 border-asfalto/20 font-semibold">
               {columnas.map((columna) => (
-                <td key={columna.clave} className={`px-4 py-3 ${alineacion(columna)}`}>
+                <td
+                  key={columna.clave}
+                  className={`px-4 py-3 ${alineacion(columna)} ${fija(columna, 'bg-white')}`}
+                >
                   {pie[columna.clave]}
                 </td>
               ))}

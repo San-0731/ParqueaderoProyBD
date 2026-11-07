@@ -46,7 +46,8 @@ Reglas:
 | `ui/Boton` | `variante` primario, secundario o peligro; `cargando` mientras se envía; `tamano="grande"` para la acción final de un flujo |
 | `ui/Campo`, `ui/Selector` | Campos de formulario con `etiqueta`, `ayuda` y `error` (el `mensaje` del backend) |
 | `ui/Tarjeta` | Agrupar contenido sobre fondo blanco |
-| `ui/Tabla` | Listados; da scroll horizontal en celular y tiene una fila `pie` para los totales |
+| `ui/Tabla` | Listados; da scroll horizontal en celular y tiene una fila `pie` para los totales. Una columna con `fija: true` (por ejemplo, la placa) queda quieta al desplazar |
+| `ui/Paginacion` | "Anterior", "Página 1 de 3" y "Siguiente"; con una sola página no se muestra |
 | `ui/Modal` | Confirmaciones y formularios de edición |
 | `ui/Alerta` | Mensaje dentro de la pantalla: `error`, `exito`, `aviso` o `info` |
 | `ui/Cargando`, `ui/EstadoVacio` | Estados de carga y de "no hay datos" |
@@ -184,6 +185,24 @@ borde-tirilla` en `index.css`) y separadores punteados. Al mostrarse, el foco va
   cambios" queda fuera del `<form>`, así que se une a él con `form={idFormulario}`.
 - **Errores 409.** Si el backend responde 409 por un dato que no se puede repetir (el documento),
   el mensaje va junto a ese campo y el foco vuelve a él.
+
+## Filtros en la URL (`pages/historial/`)
+
+- **La URL es la única fuente de los filtros**, por ejemplo
+  `?desde=2026-10-01&hasta=2026-10-31&metodo=1&pagina=2`. No hay copia en el estado: así se
+  pueden compartir y sobreviven a recargar la página. Al cambiar un filtro, la página vuelve a la 1.
+- **URL vacía:** usa el rango por defecto (los últimos 7 días). "Todo" escribe `?todo=1` para no
+  confundirse con la URL vacía.
+- **Atajos de fechas:** son botones con `aria-pressed`, y el activo se calcula comparando las
+  fechas.
+- **Fechas en hora local:** se calculan con `utils/fechas.js`, nunca con `toISOString()` (que usa
+  UTC y desde las 7 p. m. en Bogotá ya da el día siguiente).
+- **Qué se filtra dónde:** lo que el backend filtra exacto (la placa) se filtra en el navegador
+  por parte del texto; las fechas y el método se envían al backend.
+- **Rango al revés:** se avisa junto al campo y no se consulta.
+- **React Compiler:** los valores que salen de la URL y se usan como dependencias de `useCallback`
+  se calculan dentro de un `useMemo`. Si no, la regla `preserve-manual-memoization` los marca
+  como "podrían cambiar".
 
 ## "Pintura de piso" (tablero de espacios)
 

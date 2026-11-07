@@ -1,4 +1,4 @@
-import { LogOut, PencilLine } from 'lucide-react';
+import { History, LogOut, PencilLine } from 'lucide-react';
 import { useId } from 'react';
 import { Link } from 'react-router';
 import Boton from '../../components/ui/Boton.jsx';
@@ -73,6 +73,14 @@ function FichaVehiculo({ fila, onEditarVehiculo, onEditarPropietario, onElegir }
         ) : (
           <p className="rounded-lg bg-concreto px-4 py-3 text-tenue">Fuera del parqueadero.</p>
         )}
+
+        <Link
+          to={`/historial?identificador=${vehiculo.identificador}`}
+          className="inline-flex min-h-11 items-center gap-2 self-start font-semibold text-senal hover:underline"
+        >
+          <History aria-hidden="true" className="size-5" />
+          Ver su historial
+        </Link>
       </section>
 
       <section aria-labelledby={idPropietario} className="border-t border-borde pt-6">
