@@ -7,6 +7,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  Settings,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -36,6 +37,8 @@ const GRUPOS = [
       { ruta: '/historial', texto: 'Historial', icono: History },
       { ruta: '/reportes', texto: 'Reportes', icono: ChartColumn, rolMinimo: 'ADMINISTRADOR' },
       { ruta: '/espacios', texto: 'Espacios', icono: SlidersHorizontal },
+      // La pestaña exclusiva del DBA: usuarios, zonas, espacios, marcas y modelos.
+      { ruta: '/sistema', texto: 'Sistema', icono: Settings, rolMinimo: 'DBA' },
     ],
   },
 ];

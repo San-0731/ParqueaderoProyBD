@@ -47,6 +47,12 @@ vi.mock('./api/clientes.js', () => ({
   crearCliente: pendiente(),
   actualizarCliente: pendiente(),
 }));
+vi.mock('./api/usuarios.js', () => ({
+  listarUsuarios: pendiente(),
+  crearUsuario: pendiente(),
+  actualizarUsuario: pendiente(),
+  cambiarClaveUsuario: pendiente(),
+}));
 vi.mock('./api/autenticacion.js', () => ({
   iniciarSesion: vi.fn(),
   cerrarSesion: vi.fn(),
@@ -140,6 +146,7 @@ describe('navegación', () => {
     ['/historial', 'Historial de parqueos'],
     ['/reportes', 'Reportes'],
     ['/espacios', 'Administración de espacios'],
+    ['/sistema/usuarios', 'Sistema'],
     ['/no-existe', 'Página no encontrada'],
   ])('%s pone el título de la pestaña "%s | Parqueadero"', (ruta, nombre) => {
     renderizarEn(ruta);
@@ -247,6 +254,30 @@ describe('sesión y roles', () => {
     renderizarEn('/', rol);
 
     expect(enlaceMenu('Reportes')).toHaveAttribute('href', '/reportes');
+  });
+
+  it('solo el DBA ve la pestaña Sistema en el menú', () => {
+    renderizarEn('/', 'DBA');
+    expect(enlaceMenu('Sistema')).toHaveAttribute('href', '/sistema');
+  });
+
+  it.each(['OPERADOR', 'ADMINISTRADOR'])('al %s no le aparece Sistema', (rol) => {
+    renderizarEn('/', rol);
+    expect(enlaceMenu('Sistema')).not.toBeInTheDocument();
+  });
+
+  it('/sistema lleva a la sección Usuarios', () => {
+    renderizarEn('/sistema', 'DBA');
+
+    expect(titulo('Sistema')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Usuarios' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('si un administrador escribe /sistema, ve que es solo para el DBA', () => {
+    renderizarEn('/sistema/usuarios', 'ADMINISTRADOR');
+
+    expect(titulo('Sin permiso')).toBeInTheDocument();
+    expect(screen.getByText('Solo el DBA puede administrar el sistema.')).toBeInTheDocument();
   });
 
   it('si el operador escribe /reportes, ve que es solo para administradores', async () => {

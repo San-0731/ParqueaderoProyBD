@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes } from 'react-router';
 import Layout from './components/layout/Layout.jsx';
 import RequiereRol from './components/sesion/RequiereRol.jsx';
 import RutaProtegida from './components/sesion/RutaProtegida.jsx';
@@ -10,6 +10,8 @@ import NoEncontrada from './pages/NoEncontrada.jsx';
 import Reportes from './pages/reportes/Reportes.jsx';
 import Liquidacion from './pages/salida/Liquidacion.jsx';
 import Salida from './pages/salida/Salida.jsx';
+import Sistema from './pages/sistema/Sistema.jsx';
+import Usuarios from './pages/sistema/usuarios/Usuarios.jsx';
 import Tablero from './pages/tablero/Tablero.jsx';
 import Vehiculos from './pages/vehiculos/Vehiculos.jsx';
 
@@ -40,6 +42,17 @@ function App() {
             }
           />
           <Route path="espacios" element={<Espacios />} />
+          <Route
+            path="sistema"
+            element={
+              <RequiereRol minimo="DBA" mensaje="Solo el DBA puede administrar el sistema.">
+                <Sistema />
+              </RequiereRol>
+            }
+          >
+            <Route index element={<Navigate to="usuarios" replace />} />
+            <Route path="usuarios" element={<Usuarios />} />
+          </Route>
           <Route path="*" element={<NoEncontrada />} />
         </Route>
       </Route>
