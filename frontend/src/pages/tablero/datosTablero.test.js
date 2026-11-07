@@ -1,13 +1,7 @@
 import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
-import {
-  agruparPorPisoYZona,
-  cargarTablero,
-  estadoEspacio,
-  tipoElegido,
-  totalGeneral,
-} from './datosTablero.js';
+import { agruparPorPisoYZona, cargarTablero, tipoElegido, totalGeneral } from './datosTablero.js';
 import { ACTIVOS, ESPACIOS, OCUPACION } from './datosPrueba.js';
 
 vi.mock('../../api/espacios.js', () => ({ listarEspacios: vi.fn() }));
@@ -32,23 +26,6 @@ describe('cargarTablero', () => {
     listarActivos.mockResolvedValue(ACTIVOS);
 
     await expect(cargarTablero()).rejects.toThrow('sin conexión');
-  });
-});
-
-describe('estadoEspacio', () => {
-  const registro = ACTIVOS[0];
-
-  it.each([
-    ['libre', { habilitado: true, ocupado: false }, null],
-    ['ocupado', { habilitado: true, ocupado: true }, registro],
-    ['deshabilitado', { habilitado: false, ocupado: false }, null],
-    // Igual que el reporte de ocupación: el vehículo que sigue adentro manda.
-    ['ocupado', { habilitado: false, ocupado: true }, registro],
-    // Las consultas se pueden cruzar por milisegundos: basta una de las dos señales.
-    ['ocupado', { habilitado: true, ocupado: true }, null],
-    ['ocupado', { habilitado: true, ocupado: false }, registro],
-  ])('%s con %o', (esperado, espacio, registroActivo) => {
-    expect(estadoEspacio(espacio, registroActivo)).toBe(esperado);
   });
 });
 

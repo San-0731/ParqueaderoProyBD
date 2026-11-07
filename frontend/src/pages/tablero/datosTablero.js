@@ -3,7 +3,7 @@
 import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
-import { codigoEspacio } from '../../utils/espacio.js';
+import { codigoEspacio, estadoEspacio } from '../../utils/espacio.js';
 import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /**
@@ -20,22 +20,6 @@ export async function cargarTablero() {
     listarActivos(),
   ]);
   return { espacios, ocupacion, activos, actualizado: new Date() };
-}
-
-/**
- * Estado de un espacio para el tablero, con la misma regla del reporte de ocupación:
- * - "ocupado" si tiene un vehículo adentro, aunque esté deshabilitado (el vehículo termina su
- *   parqueo normalmente y hay que poder registrarle la salida);
- * - "deshabilitado" si está fuera de servicio y vacío;
- * - "libre" en cualquier otro caso.
- *
- * @param registro el parqueo activo de ese espacio, si llegó en /registros/activos
- */
-export function estadoEspacio(espacio, registro) {
-  if (espacio.ocupado || registro) {
-    return 'ocupado';
-  }
-  return espacio.habilitado ? 'libre' : 'deshabilitado';
 }
 
 /** Suma la ocupación de todos los tipos para la celda "Todos" del letrero. */

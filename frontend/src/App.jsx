@@ -1,10 +1,10 @@
 import { Route, Routes } from 'react-router';
 import Layout from './components/layout/Layout.jsx';
 import Entrada from './pages/entrada/Entrada.jsx';
-import Espacios from './pages/Espacios.jsx';
+import Espacios from './pages/espacios/Espacios.jsx';
 import Historial from './pages/historial/Historial.jsx';
 import NoEncontrada from './pages/NoEncontrada.jsx';
-import Reportes from './pages/Reportes.jsx';
+import Reportes from './pages/reportes/Reportes.jsx';
 import Liquidacion from './pages/salida/Liquidacion.jsx';
 import Salida from './pages/salida/Salida.jsx';
 import Tablero from './pages/tablero/Tablero.jsx';
