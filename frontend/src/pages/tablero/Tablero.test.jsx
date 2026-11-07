@@ -5,6 +5,7 @@ import { ErrorApi } from '../../api/cliente.js';
 import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
+import SesionDePrueba from '../../test/SesionDePrueba.jsx';
 import { ACTIVOS, ESPACIOS, OCUPACION } from './datosPrueba.js';
 import Tablero from './Tablero.jsx';
 
@@ -19,14 +20,16 @@ function UbicacionActual() {
   return <p data-testid="ubicacion">{pathname + search}</p>;
 }
 
-function renderizar(ruta = '/') {
+function renderizar(ruta = '/', rol = 'ADMINISTRADOR') {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
-      <Routes>
-        <Route path="/" element={<Tablero />} />
-        <Route path="*" element={<p>Otra pantalla</p>} />
-      </Routes>
-      <UbicacionActual />
+      <SesionDePrueba rol={rol}>
+        <Routes>
+          <Route path="/" element={<Tablero />} />
+          <Route path="*" element={<p>Otra pantalla</p>} />
+        </Routes>
+        <UbicacionActual />
+      </SesionDePrueba>
     </MemoryRouter>,
   );
 }
@@ -169,6 +172,17 @@ describe('Tablero', () => {
     await usuario.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(ubicacion()).toBe('/');
+  });
+
+  it('al operador el aviso de un espacio deshabilitado le dice que solo un administrador lo habilita', async () => {
+    const usuario = userEvent.setup();
+    renderizar('/', 'OPERADOR');
+
+    await usuario.click(await screen.findByRole('button', { name: /^A1-03 / }));
+
+    const aviso = screen.getByRole('dialog', { name: 'Espacio A1-03 deshabilitado' });
+    expect(aviso).toHaveTextContent('Solo un administrador puede volver a habilitarlo.');
+    expect(aviso).not.toHaveTextContent('habilítalo en Administración de espacios');
   });
 
   it('si la API falla muestra el error y "Reintentar" vuelve a consultar', async () => {

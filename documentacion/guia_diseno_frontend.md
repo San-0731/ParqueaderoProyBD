@@ -113,6 +113,40 @@ puede repetirse en otro piso), `codigoEspacio` ("A1-01"), `nombreEspacio` ("A1-0
 `estadoEspacio` (libre, ocupado o deshabilitado; la usan el tablero y la administración de
 espacios). Toda zona o espacio que se muestre usa estas funciones, nunca la letra sola.
 
+## Sesión y roles
+
+Todas las pantallas, menos `/login`, exigen sesión. Las piezas son:
+
+| Pieza | Para qué |
+|---|---|
+| `api/autenticacion.js` | `iniciarSesion`, `cerrarSesion` y `consultarUsuarioActual` (`/auth/...`) |
+| `api/sesionGuardada.js` | Guarda `{ token, usuario }` en `sessionStorage`: dura lo que la pestaña |
+| `api/cliente.js` | Envía el token en `Authorization: Bearer ...`; si una petición con token recibe 401, avisa con `alPerderSesion` |
+| `context/ProveedorSesion` | Comparte la sesión con toda la app; al recibir 401 la cierra y la pantalla de inicio muestra "Tu sesión terminó" |
+| `useSesion()` | `{ usuario, puede, iniciarSesion, cerrarSesion, aviso }` desde cualquier pantalla |
+| `components/sesion/RutaProtegida` | Sin sesión lleva a `/login` y, al entrar, vuelve a la pantalla que se pidió |
+| `components/sesion/RequiereRol` | Muestra la pantalla solo si el rol alcanza; si no, `pages/SinPermiso` explica quién puede usarla |
+| `utils/roles.js` | `alcanza(rol, minimo)` y `nombreRol(rol)`: la misma jerarquía del backend (`Rol.java`) |
+
+Para decidir qué ve cada rol:
+- **Una sección que el rol nunca puede usar no aparece en el menú** (`rolMinimo` en
+  `BarraNavegacion`). Si alguien escribe la dirección, `RequiereRol` le explica quién puede usarla.
+- **Una pantalla que sirve para consultar, pero tiene acciones restringidas, se ve en modo solo
+  lectura**: el control desactivado y una `Alerta tipo="info"` arriba que explica por qué. Ejemplo:
+  los interruptores de Espacios para el operador.
+- **Un botón de una acción restringida no se dibuja** (por ejemplo, "Editar vehículo" para el
+  operador): la pantalla pasa el manejador solo si `puede('ADMINISTRADOR')`.
+- Ocultar o desactivar es solo comodidad. Quien protege de verdad es el backend, que responde 403.
+
+```jsx
+const { puede } = useSesion();
+const puedeEditar = puede('ADMINISTRADOR');
+<FichaVehiculo onEditarVehiculo={puedeEditar ? abrirEdicion : undefined} />
+```
+
+En las pruebas de una pantalla, `test/SesionDePrueba.jsx` da la sesión de un rol sin pasar por el
+login: `<SesionDePrueba rol="OPERADOR"><Espacios /></SesionDePrueba>`.
+
 ## Flujo por pasos con resumen fijo (entrada)
 
 - **Pasos numerados.** Cada paso es una `Tarjeta` cuyo título usa `TituloPaso`

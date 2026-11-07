@@ -1,8 +1,27 @@
 // Cliente HTTP de la API del parqueadero. Es el ÚNICO lugar del frontend que llama a fetch:
 // las pantallas usan las funciones de los archivos de cada recurso (vehiculos.js, etc.).
+//
+// Sesión: si hay una sesión guardada, cada petición lleva su token en la cabecera
+// Authorization: Bearer <token>. Si el backend responde 401 a una petición que llevaba token
+// (la sesión venció o el DBA desactivó al usuario), se avisa a quien se registró con
+// alPerderSesion: el proveedor de la sesión la cierra y la app vuelve a la pantalla de inicio.
+
+import { leerSesionGuardada } from './sesionGuardada.js';
 
 /** Tiempo máximo de espera de una petición, en milisegundos. */
 const TIEMPO_MAXIMO_MS = 15_000;
+
+/** Funciones que quieren saber cuándo el backend rechazó la sesión (401). */
+const oyentesSesionPerdida = new Set();
+
+/**
+ * Registra una función que se llama cuando una petición con token recibe 401.
+ * Devuelve la función para dejar de escuchar (útil en un useEffect).
+ */
+export function alPerderSesion(oyente) {
+  oyentesSesionPerdida.add(oyente);
+  return () => oyentesSesionPerdida.delete(oyente);
+}
 
 /**
  * Error de una petición a la API. Los errores del backend llegan como
@@ -73,6 +92,12 @@ async function solicitar(metodo, ruta, { parametros, cuerpo } = {}) {
   const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_MS);
 
   const opciones = { method: metodo, headers: {}, signal: controlador.signal };
+  // Con sesión, toda petición lleva el token. (Authorization también hace que el navegador
+  // pregunte antes con OPTIONS, igual que Content-Type; el backend lo permite.)
+  const token = leerSesionGuardada()?.token;
+  if (token) {
+    opciones.headers.Authorization = `Bearer ${token}`;
+  }
   // Content-Type solo cuando hay cuerpo: así un GET no obliga al navegador a enviar
   // antes la petición OPTIONS de CORS (preflight).
   if (cuerpo !== undefined) {
@@ -105,6 +130,11 @@ async function solicitar(metodo, ruta, { parametros, cuerpo } = {}) {
   }
 
   if (!respuesta.ok) {
+    // Solo si la petición llevaba token: un 401 del login (contraseña incorrecta) no es una
+    // sesión perdida.
+    if (respuesta.status === 401 && token) {
+      oyentesSesionPerdida.forEach((oyente) => oyente());
+    }
     throw new ErrorApi(
       respuesta.status,
       datos?.error ?? 'ERROR_HTTP',

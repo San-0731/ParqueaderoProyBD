@@ -9,6 +9,7 @@ import EstadoVacio from '../../components/ui/EstadoVacio.jsx';
 import IconoActualizando from '../../components/ui/IconoActualizando.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { clasesBoton } from '../../components/ui/estilos.js';
+import { useSesion } from '../../context/SesionContext.js';
 import { useConsulta } from '../../hooks/useConsulta.js';
 import { useIntervalo } from '../../hooks/useIntervalo.js';
 import { formatearHora } from '../../utils/formato.js';
@@ -28,6 +29,7 @@ const INTERVALO_ACTUALIZACION_MS = 30_000;
  * - El filtro por tipo vive en la URL (?tipo=3): sobrevive a recargar la página.
  */
 function Tablero() {
+  const puedeAdministrarEspacios = useSesion().puede('ADMINISTRADOR');
   const { datos, cargando, error, recargar } = useConsulta(cargarTablero);
   const [parametros, setParametros] = useSearchParams();
   // Espacio deshabilitado que se tocó: mientras no sea null, el aviso está abierto.
@@ -126,8 +128,10 @@ function Tablero() {
           }
         >
           <p>
-            Está fuera de servicio y no recibe vehículos. Para volver a usarlo, habilítalo en
-            Administración de espacios.
+            Está fuera de servicio y no recibe vehículos.{' '}
+            {puedeAdministrarEspacios
+              ? 'Para volver a usarlo, habilítalo en Administración de espacios.'
+              : 'Solo un administrador puede volver a habilitarlo.'}
           </p>
         </Modal>
       )}

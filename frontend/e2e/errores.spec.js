@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+// test y expect de ./sesion.js: cada página empieza con la sesión del DBA abierta.
+import { expect, test } from './sesion.js';
 import {
   API,
   crearVehiculo,

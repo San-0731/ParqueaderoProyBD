@@ -1,3 +1,4 @@
+import { cerrarSesion, consultarUsuarioActual, iniciarSesion } from './autenticacion.js';
 import * as cliente from './cliente.js';
 import { consultarIngresos, consultarOcupacion } from './reportes.js';
 import {
@@ -35,6 +36,15 @@ const propietario = { documento: '1000000001', nombres: 'Ana', apellidos: 'Pére
 // [función, cómo se llama, método del cliente, argumentos esperados]
 const casos = [
   ['consultarSalud', () => consultarSalud(), 'get', ['/salud']],
+
+  [
+    'iniciarSesion',
+    () => iniciarSesion('dba', 'clave-123'),
+    'post',
+    ['/auth/login', { nombreUsuario: 'dba', clave: 'clave-123' }],
+  ],
+  ['cerrarSesion', () => cerrarSesion(), 'post', ['/auth/logout']],
+  ['consultarUsuarioActual', () => consultarUsuarioActual(), 'get', ['/auth/yo']],
 
   [
     'listarVehiculos',

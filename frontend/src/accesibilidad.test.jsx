@@ -26,8 +26,13 @@ import {
 } from './api/registros.js';
 import { consultarIngresos, consultarOcupacion } from './api/reportes.js';
 import { consultarSalud } from './api/salud.js';
+import { guardarSesion } from './api/sesionGuardada.js';
+import { iniciarSesion } from './api/autenticacion.js';
+import { ErrorApi } from './api/cliente.js';
 import { listarVehiculos } from './api/vehiculos.js';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
+import ProveedorSesion from './context/ProveedorSesion.jsx';
+import { USUARIOS_DE_PRUEBA } from './test/usuariosDePrueba.js';
 import { HISTORIAL } from './pages/historial/datosPrueba.js';
 import { INGRESOS_NOVIEMBRE, OCUPACION } from './pages/reportes/datosPrueba.js';
 import {
@@ -65,6 +70,11 @@ vi.mock('./api/vehiculos.js', () => ({
   crearVehiculo: vi.fn(),
   actualizarVehiculo: vi.fn(),
 }));
+vi.mock('./api/autenticacion.js', () => ({
+  iniciarSesion: vi.fn(),
+  cerrarSesion: vi.fn(),
+  consultarUsuarioActual: vi.fn(() => new Promise(() => {})),
+}));
 vi.mock('./api/clientes.js', () => ({
   listarClientes: vi.fn(),
   obtenerCliente: vi.fn(),
@@ -83,13 +93,20 @@ async function violaciones() {
   );
 }
 
-function renderizarEn(ruta) {
+/** Dibuja la app en la ruta, con la sesión de un rol (null: sin sesión). */
+function renderizarEn(ruta, rol = 'DBA') {
+  window.sessionStorage.clear();
+  if (rol) {
+    guardarSesion({ token: 'token-de-prueba', usuario: USUARIOS_DE_PRUEBA[rol] });
+  }
   const usuario = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[ruta]}>
-      <ProveedorNotificaciones>
-        <App />
-      </ProveedorNotificaciones>
+      <ProveedorSesion>
+        <ProveedorNotificaciones>
+          <App />
+        </ProveedorNotificaciones>
+      </ProveedorSesion>
     </MemoryRouter>,
   );
   return usuario;
@@ -179,6 +196,37 @@ describe('accesibilidad (axe-core)', () => {
 
     await usuario.click(screen.getAllByRole('switch')[0]);
     await screen.findByRole('dialog');
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('inicio de sesión, con el error de usuario o contraseña', async () => {
+    iniciarSesion.mockRejectedValue(
+      new ErrorApi(401, 'NO_AUTENTICADO', 'Usuario o contraseña incorrectos.'),
+    );
+    const usuario = renderizarEn('/', null);
+    await screen.findByRole('heading', { level: 1, name: 'Iniciar sesión' });
+    expect(await violaciones()).toEqual([]);
+
+    // Los avisos de los campos vacíos.
+    await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    expect(await violaciones()).toEqual([]);
+
+    await usuario.type(screen.getByLabelText('Usuario'), 'dba');
+    await usuario.type(screen.getByLabelText('Contraseña'), 'equivocada');
+    await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    await screen.findByRole('alert');
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('sin permiso (operador en reportes)', async () => {
+    renderizarEn('/reportes', 'OPERADOR');
+    await screen.findByRole('heading', { level: 1, name: 'Sin permiso' });
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('espacios en solo lectura (operador)', async () => {
+    renderizarEn('/espacios', 'OPERADOR');
+    await screen.findByRole('table', { name: 'Espacios del piso 1' });
     expect(await violaciones()).toEqual([]);
   });
 
