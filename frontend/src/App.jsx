@@ -8,7 +8,7 @@ import Reportes from './pages/Reportes.jsx';
 import Liquidacion from './pages/salida/Liquidacion.jsx';
 import Salida from './pages/salida/Salida.jsx';
 import Tablero from './pages/tablero/Tablero.jsx';
-import Vehiculos from './pages/Vehiculos.jsx';
+import Vehiculos from './pages/vehiculos/Vehiculos.jsx';
 
 // Rutas de la aplicación. Todas comparten el Layout (menú + contenido); cada pantalla vive
 // en su propio archivo de src/pages/.

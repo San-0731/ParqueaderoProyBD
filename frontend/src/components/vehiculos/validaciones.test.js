@@ -6,6 +6,7 @@ import {
   validarPropietario,
   validarPropietarioNuevo,
   validarVehiculo,
+  vehiculoParaActualizar,
   vehiculoParaApi,
 } from './validaciones.js';
 
@@ -141,5 +142,14 @@ describe('cuerpos para la API', () => {
     expect(
       vehiculoParaApi({ identificador: 'KLM999', idModelo: '10', color: 'Gris', anio: '2020' }, 7),
     ).toMatchObject({ idModelo: 10, color: 'Gris', anio: 2020 });
+  });
+
+  it('vehículo para editar: sin placa ni tipo', () => {
+    expect(vehiculoParaActualizar({ idModelo: '11', color: ' Azul ', anio: '2021' }, 8)).toEqual({
+      idCliente: 8,
+      idModelo: 11,
+      color: 'Azul',
+      anio: 2021,
+    });
   });
 });

@@ -5,7 +5,6 @@ import {
   agruparPorPiso,
   buscarVehiculo,
   calcularVista,
-  describirModelo,
   espaciosParaTipo,
   mensajePreseleccion,
   nombreTipo,
@@ -115,17 +114,12 @@ describe('agruparPorPiso', () => {
   });
 });
 
-describe('nombreTipo y describirModelo', () => {
+describe('nombreTipo', () => {
   it('nombre del tipo', () => {
     expect(nombreTipo(3, TIPOS)).toBe('Carro');
     expect(nombreTipo(99, TIPOS)).toBeNull();
     // El camión se muestra con su nombre largo (solo en pantalla).
     expect(nombreTipo(4, [{ idTipo: 4, nombre: 'Camión' }])).toBe('Camión de carga pesada');
-  });
-
-  it('marca y modelo juntos, o null sin modelo', () => {
-    expect(describirModelo(10, MODELOS, MARCAS)).toBe('Mazda 3');
-    expect(describirModelo(null, MODELOS, MARCAS)).toBeNull();
   });
 });
 

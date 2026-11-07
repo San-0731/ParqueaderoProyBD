@@ -141,15 +141,22 @@ export function clienteParaApi({ documento, nombres, apellidos, telefono }) {
 }
 
 /**
- * Cuerpo para POST /vehiculos: los selectores dan texto, la API espera números o null.
- * No lleva idTipo: el backend lo asigna según la placa.
+ * Cuerpo para PUT /vehiculos/{id}: los selectores dan texto, la API espera números o null.
+ * No lleva placa ni tipo: no se pueden cambiar (el backend conserva los guardados).
  */
-export function vehiculoParaApi({ identificador, idModelo, color, anio }, idCliente) {
+export function vehiculoParaActualizar({ idModelo, color, anio }, idCliente) {
   return {
-    identificador,
     idCliente,
     idModelo: idModelo ? Number(idModelo) : null,
     color: (color ?? '').trim() || null,
     anio: String(anio ?? '').trim() ? Number(anio) : null,
   };
+}
+
+/**
+ * Cuerpo para POST /vehiculos: la placa más los mismos datos de la edición.
+ * No lleva idTipo: el backend lo asigna según la placa.
+ */
+export function vehiculoParaApi({ identificador, ...valores }, idCliente) {
+  return { identificador, ...vehiculoParaActualizar(valores, idCliente) };
 }
