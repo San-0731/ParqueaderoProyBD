@@ -93,7 +93,9 @@ public final class TraductorErroresSQL {
             entry("uq_registro_vehiculo_activo", "El vehículo ya tiene un parqueo activo."),
             entry("uq_registro_espacio_activo", "El espacio ya está ocupado por otro vehículo."),
             entry("uq_metodo_pago_nombre", "Ya existe un método de pago llamado '%s'."),
-            entry("uq_pago_referencia", "Ya existe un pago con la referencia '%s'."));
+            entry("uq_pago_referencia", "Ya existe un pago con la referencia '%s'."),
+            entry("uq_rol_nombre", "Ya existe un rol llamado '%s'."),
+            entry("uq_usuario_nombre_usuario", "Ya existe un usuario llamado '%s'."));
 
     /** Llave foránea al insertar o modificar (1452): lo referenciado no existe. */
     private static final Map<String, String> MENSAJES_LLAVE_FORANEA_NO_EXISTE = Map.ofEntries(
@@ -107,7 +109,9 @@ public final class TraductorErroresSQL {
             entry("fk_registro_vehiculo", "El vehículo indicado no existe."),
             entry("fk_registro_espacio", "El espacio indicado no existe."),
             entry("fk_pago_registro", "El registro de parqueo indicado no existe."),
-            entry("fk_pago_metodo", "El método de pago indicado no existe."));
+            entry("fk_pago_metodo", "El método de pago indicado no existe."),
+            entry("fk_usuario_rol", "El rol indicado no existe."),
+            entry("fk_sesion_usuario", "El usuario indicado no existe."));
 
     /** Llave foránea al borrar (1451): otros registros dependen de la fila. */
     private static final Map<String, String> MENSAJES_FILA_EN_USO = Map.ofEntries(
@@ -130,7 +134,10 @@ public final class TraductorErroresSQL {
             entry("fk_pago_registro",
                     "No se puede borrar el registro de parqueo porque tiene pagos."),
             entry("fk_pago_metodo",
-                    "No se puede borrar el método de pago porque tiene pagos registrados."));
+                    "No se puede borrar el método de pago porque tiene pagos registrados."),
+            entry("fk_usuario_rol", "No se puede borrar el rol porque tiene usuarios."),
+            entry("fk_sesion_usuario",
+                    "No se puede borrar el usuario porque tiene sesiones abiertas."));
 
     /** CHECK (3819). */
     private static final Map<String, String> MENSAJES_CHECK = Map.ofEntries(
@@ -149,7 +156,13 @@ public final class TraductorErroresSQL {
             entry("chk_zona_piso_formato", "El piso debe ser un número del 1 al 99."),
             entry("chk_zona_letra_formato", "La zona debe ser una sola letra mayúscula (A-Z)."),
             entry("chk_espacio_numero_formato",
-                    "El número del espacio debe tener dos dígitos, del 01 al 99."));
+                    "El número del espacio debe tener dos dígitos, del 01 al 99."),
+            entry("chk_usuario_nombre_formato", "El nombre de usuario debe tener de 3 a 30"
+                    + " caracteres: minúsculas sin tildes, números, punto o guion bajo."),
+            entry("chk_usuario_nombre_completo_no_vacio", "El nombre completo es obligatorio."),
+            entry("chk_sesion_token_hash_formato", "El token de la sesión no es válido."),
+            entry("chk_sesion_expira_posterior",
+                    "La sesión debe vencer después de haberse creado."));
 
     private TraductorErroresSQL() {
         // Clase de utilidades: no se crean objetos de ella.
