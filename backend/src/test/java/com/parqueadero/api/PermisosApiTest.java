@@ -38,6 +38,7 @@ class PermisosApiTest extends PruebaApi {
         "POST, /registros/entrada", "GET, /registros/activos", "GET, /registros",
         "GET, /registros/1", "GET, /registros/1/liquidacion", "POST, /registros/1/salida",
         "GET, /reportes/ingresos", "GET, /reportes/ocupacion",
+        "GET, /usuarios", "POST, /usuarios", "PUT, /usuarios/1", "PUT, /usuarios/1/clave",
     })
     void todaRutaQueNoEsPublicaExigeSesion(String metodo, String ruta) {
         String cuerpo = "GET".equals(metodo) ? null : CUERPO;
@@ -118,6 +119,25 @@ class PermisosApiTest extends PruebaApi {
         int salida = enviar("POST", "/registros/" + idRegistro + "/salida", CUERPO, token).estado();
         assertNotEquals(401, salida);
         assertNotEquals(403, salida);
+    }
+
+    // ------------------------------------------------------------ solo DBA
+
+    @ParameterizedTest(name = "{0} en {1} {2} → 403")
+    @CsvSource({
+        "OPERADOR, GET, /usuarios", "OPERADOR, POST, /usuarios",
+        "OPERADOR, PUT, /usuarios/1", "OPERADOR, PUT, /usuarios/1/clave",
+        "ADMINISTRADOR, GET, /usuarios", "ADMINISTRADOR, POST, /usuarios",
+        "ADMINISTRADOR, PUT, /usuarios/1", "ADMINISTRADOR, PUT, /usuarios/1/clave",
+    })
+    void soloElDbaAdministraUsuarios(Rol rol, String metodo, String ruta) {
+        String cuerpo = "GET".equals(metodo) ? null : CUERPO;
+
+        RespuestaHttp respuesta = enviar(metodo, ruta, cuerpo, tokenConRol(rol));
+
+        assertEquals(403, respuesta.estado(), respuesta.cuerpo());
+        assertEquals("Solo un usuario DBA puede hacer esto.",
+                respuesta.objeto().get("mensaje").getAsString());
     }
 
     // ------------------------------------------------------------ administrador y DBA

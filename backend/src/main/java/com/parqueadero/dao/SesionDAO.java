@@ -35,6 +35,8 @@ public final class SesionDAO {
 
     private static final String SQL_BORRAR_VENCIDAS = "DELETE FROM sesion WHERE expira <= NOW()";
 
+    private static final String SQL_BORRAR_DE_USUARIO = "DELETE FROM sesion WHERE id_usuario = ?";
+
     /** Guarda una sesión que vence dentro de {@code horas} horas. */
     public void insertar(Connection conexion, String tokenHash, long idUsuario, int horas)
             throws SQLException {
@@ -67,6 +69,17 @@ public final class SesionDAO {
         try (PreparedStatement borrado = conexion.prepareStatement(SQL_BORRAR)) {
             borrado.setString(1, tokenHash);
             borrado.executeUpdate();
+        }
+    }
+
+    /**
+     * Borra todas las sesiones de un usuario: al desactivarlo, cambiarle el rol
+     * o su contraseña, tiene que volver a iniciar sesión.
+     */
+    public int borrarDeUsuario(Connection conexion, long idUsuario) throws SQLException {
+        try (PreparedStatement borrado = conexion.prepareStatement(SQL_BORRAR_DE_USUARIO)) {
+            borrado.setLong(1, idUsuario);
+            return borrado.executeUpdate();
         }
     }
 

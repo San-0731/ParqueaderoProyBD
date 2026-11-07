@@ -24,6 +24,7 @@ import com.parqueadero.handler.RegistroHandler;
 import com.parqueadero.handler.ReporteHandler;
 import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
+import com.parqueadero.handler.UsuarioHandler;
 import com.parqueadero.handler.VehiculoHandler;
 import com.parqueadero.model.Rol;
 import com.parqueadero.service.AutenticacionService;
@@ -33,6 +34,7 @@ import com.parqueadero.service.EspacioService;
 import com.parqueadero.service.RegistroService;
 import com.parqueadero.service.ReporteService;
 import com.parqueadero.service.SalidaService;
+import com.parqueadero.service.UsuarioService;
 import com.parqueadero.service.VehiculoService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
@@ -139,6 +141,8 @@ public final class Servidor {
                 new TarifaDAO(), new MetodoPagoDAO(), new PagoDAO(), registroService));
         ReporteHandler reportes = new ReporteHandler(
                 new ReporteService(conexionBD, new ReporteDAO()));
+        UsuarioHandler usuarios = new UsuarioHandler(
+                new UsuarioService(conexionBD, new UsuarioDAO(), new SesionDAO()));
 
         // Permisos (sección 4 de la Fase 5). Cada ruta declara el rol mínimo que
         // exige; los roles superiores también pasan (DBA ⊇ ADMINISTRADOR ⊇ OPERADOR).
@@ -146,6 +150,7 @@ public final class Servidor {
         // autenticación para convertir el token en el usuario.
         Rol operador = Rol.OPERADOR;
         Rol administrador = Rol.ADMINISTRADOR;
+        Rol dba = Rol.DBA;
         return new Router(autenticacionService::usuarioDeToken)
                 .get("/api/salud", salud::consultar)
 
@@ -188,6 +193,12 @@ public final class Servidor {
                 // Los ingresos (dinero) son solo del administrador. La ocupación la
                 // usa también el tablero del operador (cupos libres por tipo).
                 .get("/api/reportes/ingresos", administrador, reportes::ingresos)
-                .get("/api/reportes/ocupacion", operador, reportes::ocupacion);
+                .get("/api/reportes/ocupacion", operador, reportes::ocupacion)
+
+                // Pestaña Sistema: solo el DBA administra las cuentas.
+                .get("/api/usuarios", dba, usuarios::listar)
+                .post("/api/usuarios", dba, usuarios::crear)
+                .put("/api/usuarios/{id}", dba, usuarios::actualizar)
+                .put("/api/usuarios/{id}/clave", dba, usuarios::cambiarClave);
     }
 }

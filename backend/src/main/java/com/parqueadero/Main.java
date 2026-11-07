@@ -2,6 +2,7 @@ package com.parqueadero;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.dao.SesionDAO;
 import com.parqueadero.dao.UsuarioDAO;
 import com.parqueadero.service.UsuarioService;
 
@@ -56,7 +57,8 @@ public class Main {
      * arranca igual y {@code /api/salud} muestra el problema.
      */
     private static void prepararDbaInicial(Configuracion configuracion) {
-        UsuarioService usuarios = new UsuarioService(new ConexionBD(configuracion), new UsuarioDAO());
+        UsuarioService usuarios = new UsuarioService(new ConexionBD(configuracion), new UsuarioDAO(),
+                new SesionDAO());
         try {
             switch (usuarios.crearDbaInicialSiFalta(configuracion.getDbaUsuario(),
                     configuracion.getDbaClaveInicial())) {

@@ -41,7 +41,7 @@ class DbaInicialTest extends PruebaIntegracion {
 
     @BeforeEach
     void dejarLaBaseSinDba() throws SQLException {
-        usuarios = new UsuarioService(new ConexionBD(configuracion()), new UsuarioDAO());
+        usuarios = new UsuarioService(new ConexionBD(configuracion()), new UsuarioDAO(), new SesionDAO());
         try (Connection conexion = conexion()) {
             try (PreparedStatement consulta = conexion.prepareStatement(
                     "SELECT u.id_usuario FROM usuario u JOIN rol r ON r.id_rol = u.id_rol"
