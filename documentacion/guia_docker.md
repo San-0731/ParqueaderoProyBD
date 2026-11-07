@@ -317,10 +317,29 @@ arrancar solo cuando arranca Docker, salvo que lo hubieras apagado con
 ### 7.7 Agregué una migración nueva (por ejemplo V006) y no se aplicó
 
 Es lo esperado. Las migraciones se ejecutan **solo cuando el volumen está
-vacío** (la primera vez). Para aplicarla tienes dos caminos:
+vacío** (la primera vez). Para aplicarla tienes tres caminos:
 
-- **Conservar los datos:** ejecutar el script a mano desde el cliente SQL, o
-  desde la terminal:
+- **Conservar los datos, con respaldo (recomendado):** desde la raíz del
+  repositorio, con el contenedor encendido:
+  ```bash
+  ./database/scripts/aplicar-migracion.sh database/migrations/V006__normalizar_zonas.sql
+  ```
+  - Primero hace un respaldo completo con `mysqldump` en `database/respaldos/`
+    (carpeta en `.gitignore`: tiene datos de los clientes) y después aplica la
+    migración como root.
+  - Cada migración se aplica **una sola vez** y **en orden** (V006 antes que
+    V007). Si la repites, falla en la primera instrucción (por ejemplo, "la
+    tabla ya existe") sin cambiar nada más.
+  - Si la migración falla a mitad de camino, la base puede quedar a medias: en
+    MySQL los cambios de tablas no se pueden deshacer. El script imprime el
+    comando para volver al respaldo:
+    ```bash
+    ./database/scripts/aplicar-migracion.sh --restaurar database/respaldos/<archivo>.sql
+    ```
+    Restaurar borra la base y la crea de nuevo desde el respaldo; pide escribir
+    el nombre de la base para confirmar.
+- **Conservar los datos, sin respaldo:** ejecutar el script a mano desde el
+  cliente SQL, o desde la terminal:
   ```bash
   docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < database/migrations/V006__....sql
   ```

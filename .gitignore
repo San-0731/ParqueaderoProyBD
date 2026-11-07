@@ -20,6 +20,10 @@ playwright-report/
 .vscode/*
 !.vscode/extensions.json
 
+# ---------- Respaldos de la base (database/scripts/aplicar-migracion.sh) ----------
+# Tienen datos personales de los clientes: nunca se suben al repositorio.
+database/respaldos/
+
 # ---------- Variables de entorno ----------
 .env
 .env.*
