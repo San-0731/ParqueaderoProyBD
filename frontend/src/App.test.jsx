@@ -24,11 +24,16 @@ vi.mock('./api/catalogos.js', () => ({
   listarModelos: pendiente(),
   listarMetodosPago: pendiente(),
 }));
-vi.mock('./api/vehiculos.js', () => ({ listarVehiculos: pendiente(), crearVehiculo: pendiente() }));
+vi.mock('./api/vehiculos.js', () => ({
+  listarVehiculos: pendiente(),
+  crearVehiculo: pendiente(),
+  actualizarVehiculo: pendiente(),
+}));
 vi.mock('./api/clientes.js', () => ({
   obtenerCliente: pendiente(),
   listarClientes: pendiente(),
   crearCliente: pendiente(),
+  actualizarCliente: pendiente(),
 }));
 
 /** Dibuja la app completa empezando en la ruta indicada (MemoryRouter simula la URL). */

@@ -99,7 +99,9 @@ Los componentes del dominio que usan varias pantallas van en `components/<tema>/
 | Componente | Uso |
 |---|---|
 | `TarjetaVehiculo` | Datos del vehículo y su propietario |
-| `FormularioVehiculo` | Registro rápido de un vehículo con su propietario; la placa llega por prop |
+| `FormularioVehiculo` | Registro de un vehículo con su propietario (entrada y "Nuevo vehículo"); la placa llega por prop y el tipo sale de ella |
+| `CamposVehiculo` | Marca, modelo, color y año; los usan el registro y la edición |
+| `modelos.js` | `describirModelo` ("Mazda 3") e `idMarcaDeModelo` |
 | `SeccionPropietario` | Búsqueda de un propietario por documento o registro de uno nuevo |
 | `validaciones.js` | Los mismos límites y mensajes del backend, para avisar antes de enviar |
 
@@ -161,6 +163,27 @@ borde-tirilla` en `index.css`) y separadores punteados. Al mostrarse, el foco va
 
 `window.print()` abre el diálogo del navegador. Para revisar cómo queda impreso sin papel:
 `chromium --headless --print-to-pdf=recibo.pdf <url>`.
+
+## Lista con ficha al lado (`pages/vehiculos/`)
+
+- **Distribución.** En escritorio, la lista va a la izquierda (`22rem`) y la ficha a la derecha
+  (`lg:sticky`). En celular se ve una cosa a la vez; la ficha lleva "Volver a la lista".
+- **URL.** Lo que se ve queda guardado en ella: `?id=12` o `?nuevo=KLM999`.
+- **Selección resaltada** (`ListaVehiculos`):
+
+  | Estado | Aspecto | Clases |
+  |---|---|---|
+  | Elegido | Contorno azul, crece un poco y se eleva | `border-senal ring-2 ring-senal shadow-md motion-safe:scale-[1.02]` |
+  | Mouse encima | Crece levemente | `hover:border-senal/50 motion-safe:hover:scale-[1.01]` |
+
+  Es la única tarjeta con sombra fuera de los modales y los avisos: así se nota cuál se está
+  viendo. La lista lleva `p-1` para que la tarjeta agrandada no se corte.
+- **Teclado.** ↑ y ↓ cambian la selección, Inicio y Fin van al primero y al último, y Tab sale de
+  la lista hacia la ficha. Solo el elegido está en el orden de Tab (*roving tabindex*).
+- **Edición en modales.** Vehículo y propietario son dos modales distintos. El botón "Guardar
+  cambios" queda fuera del `<form>`, así que se une a él con `form={idFormulario}`.
+- **Errores 409.** Si el backend responde 409 por un dato que no se puede repetir (el documento),
+  el mensaje va junto a ese campo y el foco vuelve a él.
 
 ## "Pintura de piso" (tablero de espacios)
 

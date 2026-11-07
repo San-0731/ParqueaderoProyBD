@@ -4,14 +4,12 @@ import { crearCliente } from '../../api/clientes.js';
 import { crearVehiculo } from '../../api/vehiculos.js';
 import Alerta from '../ui/Alerta.jsx';
 import Boton from '../ui/Boton.jsx';
-import Campo from '../ui/Campo.jsx';
 import Placa from '../ui/Placa.jsx';
 import { nombreTipoVisible, tipoSegunPlaca, TIPOS } from '../../utils/tipoVehiculo.js';
-import Selector from '../ui/Selector.jsx';
+import CamposVehiculo from './CamposVehiculo.jsx';
 import SeccionPropietario from './SeccionPropietario.jsx';
 import {
   clienteParaApi,
-  MAX_COLOR,
   PROPIETARIO_VACIO,
   validarPropietario,
   validarVehiculo,
@@ -52,17 +50,9 @@ function FormularioVehiculo({ identificador, marcas, modelos, onRegistrado, onCo
     );
   }
 
-  const cambiar = (campo) => (evento) => {
-    const valor = evento.target.value;
-    setValores((anteriores) => ({ ...anteriores, [campo]: valor }));
-    quitarError(campo);
-  };
-
-  // Al cambiar la marca se borra el modelo: el anterior era de otra marca.
-  function cambiarMarca(evento) {
-    const idMarca = evento.target.value;
-    setValores((anteriores) => ({ ...anteriores, idMarca, idModelo: '' }));
-    quitarError('idModelo');
+  function cambiarVehiculo(cambios) {
+    setValores((anteriores) => ({ ...anteriores, ...cambios }));
+    quitarError(...Object.keys(cambios));
   }
 
   function cambiarPropietario(actualizar) {
@@ -70,7 +60,6 @@ function FormularioVehiculo({ identificador, marcas, modelos, onRegistrado, onCo
     quitarError('documento', 'nombres', 'apellidos', 'telefono');
   }
 
-  const modelosDeMarca = modelos.filter((modelo) => String(modelo.idMarca) === valores.idMarca);
   const tipo = tipoSegunPlaca(identificador);
 
   async function registrar(evento) {
@@ -124,41 +113,12 @@ function FormularioVehiculo({ identificador, marcas, modelos, onRegistrado, onCo
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-lg font-semibold">Datos del vehículo</legend>
         <TipoSegunPlaca tipo={tipo} />
-        <Selector
-          etiqueta="Marca (opcional)"
-          placeholder="Sin marca"
-          opciones={marcas.map((marca) => ({ valor: String(marca.idMarca), texto: marca.nombre }))}
-          value={valores.idMarca}
-          onChange={cambiarMarca}
-        />
-        <Selector
-          etiqueta="Modelo (opcional)"
-          placeholder={valores.idMarca ? 'Elige el modelo' : 'Primero elige la marca'}
-          opciones={modelosDeMarca.map((modelo) => ({
-            valor: String(modelo.idModelo),
-            texto: modelo.nombre,
-          }))}
-          value={valores.idModelo}
-          onChange={cambiar('idModelo')}
-          disabled={!valores.idMarca}
-          error={errores.idModelo}
-        />
-        <Campo
-          etiqueta="Color (opcional)"
-          value={valores.color}
-          onChange={cambiar('color')}
-          maxLength={MAX_COLOR}
-          error={errores.color}
-          autoComplete="off"
-        />
-        <Campo
-          etiqueta="Año (opcional)"
-          value={valores.anio}
-          onChange={cambiar('anio')}
-          inputMode="numeric"
-          maxLength={4}
-          error={errores.anio}
-          autoComplete="off"
+        <CamposVehiculo
+          valores={valores}
+          errores={errores}
+          marcas={marcas}
+          modelos={modelos}
+          onCambiar={cambiarVehiculo}
         />
       </fieldset>
 

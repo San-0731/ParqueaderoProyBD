@@ -114,16 +114,6 @@ export function nombreTipo(idTipo, tipos) {
   return nombreTipoVisible(tipos.find((tipo) => tipo.idTipo === idTipo)?.nombre ?? null);
 }
 
-/** Marca y modelo juntos ("Mazda 3"), o null si el vehículo no tiene modelo. */
-export function describirModelo(idModelo, modelos, marcas) {
-  const modelo = modelos.find((candidato) => candidato.idModelo === idModelo);
-  if (!modelo) {
-    return null;
-  }
-  const marca = marcas.find((candidata) => candidata.idMarca === modelo.idMarca);
-  return marca ? `${marca.nombre} ${modelo.nombre}` : modelo.nombre;
-}
-
 /**
  * Todo lo que la pantalla muestra, calculado a partir de su estado. Al ser una función pura,
  * la pantalla no necesita efectos para mantener sincronizados el paso 2 y el resumen.

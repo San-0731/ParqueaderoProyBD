@@ -10,7 +10,8 @@ import { clasesBoton } from '../../components/ui/estilos.js';
 import { nombreEspacio } from '../../utils/espacio.js';
 import { formatearHora } from '../../utils/formato.js';
 import { formatearPlaca } from '../../utils/identificador.js';
-import { describirModelo, nombreTipo } from './datosEntrada.js';
+import { describirModelo } from '../../components/vehiculos/modelos.js';
+import { nombreTipo } from './datosEntrada.js';
 import TituloPaso from './TituloPaso.jsx';
 
 /**
