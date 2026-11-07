@@ -90,13 +90,10 @@ describe('validarPropietario', () => {
 });
 
 describe('validarVehiculo', () => {
-  const valido = { idTipo: '3', idMarca: '', idModelo: '', color: '', anio: '' };
+  const valido = { idMarca: '', idModelo: '', color: '', anio: '' };
 
-  it('solo el tipo es obligatorio', () => {
+  it('todos los datos son opcionales (el tipo sale de la placa)', () => {
     expect(validarVehiculo(valido)).toEqual({});
-    expect(validarVehiculo({ ...valido, idTipo: '' })).toEqual({
-      idTipo: 'Elige el tipo de vehículo.',
-    });
   });
 
   it('una marca sin modelo pide el modelo', () => {
@@ -133,23 +130,16 @@ describe('cuerpos para la API', () => {
 
   it('vehículo: números y null en los opcionales vacíos', () => {
     expect(
-      vehiculoParaApi(
-        { identificador: 'KLM999', idTipo: '3', idModelo: '', color: ' ', anio: '' },
-        7,
-      ),
+      vehiculoParaApi({ identificador: 'KLM999', idModelo: '', color: ' ', anio: '' }, 7),
     ).toEqual({
       identificador: 'KLM999',
-      idTipo: 3,
       idCliente: 7,
       idModelo: null,
       color: null,
       anio: null,
     });
     expect(
-      vehiculoParaApi(
-        { identificador: 'KLM999', idTipo: '3', idModelo: '10', color: 'Gris', anio: '2020' },
-        7,
-      ),
+      vehiculoParaApi({ identificador: 'KLM999', idModelo: '10', color: 'Gris', anio: '2020' }, 7),
     ).toMatchObject({ idModelo: 10, color: 'Gris', anio: 2020 });
   });
 });

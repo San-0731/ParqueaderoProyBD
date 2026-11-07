@@ -7,6 +7,7 @@
 import { listarMetodosPago } from '../../api/catalogos.js';
 import { consultarLiquidacion, listarActivos, obtenerRegistro } from '../../api/registros.js';
 import { normalizarIdentificador } from '../../utils/identificador.js';
+import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /** Igual que la columna pago.referencia VARCHAR(60) y SalidaService.MAX_REFERENCIA. */
 export const MAX_REFERENCIA = 60;
@@ -54,7 +55,7 @@ export async function cargarCobro(idRegistro) {
     registro,
     liquidacion,
     metodos,
-    tipoVehiculo: activo?.tipoVehiculo ?? null,
+    tipoVehiculo: nombreTipoVisible(activo?.tipoVehiculo ?? null),
     propietario: activo?.nombreCliente ?? null,
   };
 }

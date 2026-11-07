@@ -181,7 +181,6 @@ function Entrada() {
             errorBusqueda={errorBusqueda}
             resultado={resultado}
             catalogos={datos}
-            idTipoSugerido={espacioDelTablero?.idTipo}
             onRegistrado={registrado}
             onCorregir={corregir}
           />

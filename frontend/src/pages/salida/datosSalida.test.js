@@ -152,6 +152,15 @@ describe('cargarCobro', () => {
     expect(consultarLiquidacion).toHaveBeenCalledWith('28');
   });
 
+  it('muestra el camión como "Camión de carga pesada"', async () => {
+    obtenerRegistro.mockResolvedValue(REGISTRO_28);
+    consultarLiquidacion.mockResolvedValue(LIQUIDACION_28);
+    listarMetodosPago.mockResolvedValue(METODOS);
+    listarActivos.mockResolvedValue([{ ...ACTIVOS[0], tipoVehiculo: 'Camión' }]);
+
+    expect((await cargarCobro('28')).tipoVehiculo).toBe('Camión de carga pesada');
+  });
+
   it('si el registro no aparece entre los activos, deja el tipo y el propietario en null', async () => {
     obtenerRegistro.mockResolvedValue(REGISTRO_28);
     consultarLiquidacion.mockResolvedValue(LIQUIDACION_28);

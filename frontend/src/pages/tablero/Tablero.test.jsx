@@ -229,4 +229,34 @@ describe('Tablero', () => {
     expect(consultarOcupacion).toHaveBeenCalledTimes(2);
     expect(listarActivos).toHaveBeenCalledTimes(2);
   });
+
+  it('muestra el camión como "Camión de carga pesada" en el letrero y en la cuadrícula', async () => {
+    consultarOcupacion.mockResolvedValue([
+      ...OCUPACION,
+      { idTipo: 4, tipoVehiculo: 'Camión', total: 1, ocupados: 0, libres: 1, deshabilitados: 0 },
+    ]);
+    listarEspacios.mockResolvedValue([
+      ...ESPACIOS,
+      {
+        idEspacio: 9,
+        idTipo: 4,
+        piso: '2',
+        zona: 'C',
+        numero: '01',
+        habilitado: true,
+        ocupado: false,
+        disponible: true,
+      },
+    ]);
+    renderizar();
+
+    expect(
+      await within(await screen.findByRole('region', { name: 'Cupos libres' })).findByRole(
+        'button',
+        { name: 'Camión de carga pesada: 1 libre de 1' },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^Camión de carga pesada, 1 libre de/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Camión$/)).not.toBeInTheDocument();
+  });
 });

@@ -4,6 +4,7 @@ import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
 import { codigoEspacio } from '../../utils/espacio.js';
+import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /**
  * Hace las 3 consultas del tablero en paralelo (Promise.all: el tiempo total es el de la más
@@ -72,7 +73,9 @@ export function tipoElegido(valorUrl, ocupacion) {
  */
 export function agruparPorPisoYZona({ espacios, activos, ocupacion, idTipo = null }) {
   const registroPorEspacio = new Map(activos.map((registro) => [registro.idEspacio, registro]));
-  const nombreTipo = new Map(ocupacion.map((tipo) => [tipo.idTipo, tipo.tipoVehiculo]));
+  const nombreTipo = new Map(
+    ocupacion.map((tipo) => [tipo.idTipo, nombreTipoVisible(tipo.tipoVehiculo)]),
+  );
   const pisos = new Map();
 
   for (const espacio of espacios) {

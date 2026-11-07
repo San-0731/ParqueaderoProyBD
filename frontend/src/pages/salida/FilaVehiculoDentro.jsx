@@ -4,6 +4,7 @@ import Placa from '../../components/ui/Placa.jsx';
 import { nombreEspacio } from '../../utils/espacio.js';
 import { formatearDuracion, formatearFechaHora } from '../../utils/formato.js';
 import { formatearPlaca } from '../../utils/identificador.js';
+import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /**
  * Un vehículo dentro, con forma de tiquete de parqueadero: a la izquierda el "talón" con la
@@ -18,7 +19,9 @@ import { formatearPlaca } from '../../utils/identificador.js';
 function FilaVehiculoDentro({ activo }) {
   const tiempo = formatearDuracion(activo.minutosTranscurridos);
   const entrada = formatearFechaHora(activo.entrada);
-  const detalle = [activo.tipoVehiculo, activo.nombreCliente].filter(Boolean).join(', ');
+  const detalle = [nombreTipoVisible(activo.tipoVehiculo), activo.nombreCliente]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <li>

@@ -74,13 +74,11 @@ export function validarPropietarioNuevo({ documento, nombres, apellidos, telefon
 
 /**
  * Datos del vehículo tal como están en el formulario (texto):
- * { idTipo, idMarca, idModelo, color, anio }. Solo el tipo es obligatorio.
+ * { idMarca, idModelo, color, anio }. Todos son opcionales: el tipo no se elige, sale de la
+ * placa (utils/tipoVehiculo.js) y lo asigna el backend.
  */
-export function validarVehiculo({ idTipo, idMarca, idModelo, color, anio }) {
+export function validarVehiculo({ idMarca, idModelo, color, anio }) {
   const errores = {};
-  if (!idTipo) {
-    errores.idTipo = 'Elige el tipo de vehículo.';
-  }
   // El vehículo solo guarda el modelo (y el modelo sabe su marca): una marca sin modelo se
   // perdería sin aviso.
   if (idMarca && !idModelo) {
@@ -142,11 +140,13 @@ export function clienteParaApi({ documento, nombres, apellidos, telefono }) {
   };
 }
 
-/** Cuerpo para POST /vehiculos: los selectores dan texto, la API espera números o null. */
-export function vehiculoParaApi({ identificador, idTipo, idModelo, color, anio }, idCliente) {
+/**
+ * Cuerpo para POST /vehiculos: los selectores dan texto, la API espera números o null.
+ * No lleva idTipo: el backend lo asigna según la placa.
+ */
+export function vehiculoParaApi({ identificador, idModelo, color, anio }, idCliente) {
   return {
     identificador,
-    idTipo: Number(idTipo),
     idCliente,
     idModelo: idModelo ? Number(idModelo) : null,
     color: (color ?? '').trim() || null,

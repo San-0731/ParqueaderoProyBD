@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 import { totalGeneral } from './datosTablero.js';
 
 /** 1 → "1 ocupado"; 3 → "3 ocupados". */
@@ -38,7 +39,7 @@ function LetreroCupos({ ocupacion, idTipo, onElegir }) {
     // Un tipo sin espacios (total 0) no tiene nada que mostrar ni que filtrar.
     ...ocupacion
       .filter((tipo) => tipo.total > 0)
-      .map((tipo) => ({ ...tipo, nombre: tipo.tipoVehiculo })),
+      .map((tipo) => ({ ...tipo, nombre: nombreTipoVisible(tipo.tipoVehiculo) })),
   ];
 
   return (
@@ -73,7 +74,14 @@ function LetreroCupos({ ocupacion, idTipo, onElegir }) {
                     : 'border-white/15 bg-asfalto-claro text-white hover:border-white/50'
                 }`}
               >
-                <span className="font-semibold">{celda.nombre}</span>
+                {/* Alto de dos líneas: así los números quedan alineados aunque un nombre largo
+                    ("Camión de carga pesada") ocupe dos. En celular "Todos" va sola en su fila
+                    y no lo necesita. */}
+                <span
+                  className={`leading-snug font-semibold ${celda.idTipo === null ? 'sm:min-h-[2lh]' : 'min-h-[2lh]'}`}
+                >
+                  {celda.nombre}
+                </span>
                 <span
                   className={`mt-1 font-condensada text-4xl leading-none font-bold tabular-nums sm:text-5xl ${
                     elegida ? 'text-libre' : ''
