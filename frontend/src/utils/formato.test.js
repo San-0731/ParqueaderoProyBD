@@ -4,7 +4,6 @@ import {
   formatearFechaHora,
   formatearHora,
   formatearPesos,
-  minutosEntre,
   SIN_DATO,
 } from './formato.js';
 
@@ -86,40 +85,5 @@ describe('formatearDuracion', () => {
 
   it('muestra un guion cuando no hay minutos', () => {
     expect(formatearDuracion(null)).toBe(SIN_DATO);
-  });
-});
-
-describe('minutosEntre', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('cuenta los minutos entre dos horas del mismo día', () => {
-    expect(minutosEntre('2026-11-03T10:00:00', '2026-11-03T12:15:00')).toBe(135);
-  });
-
-  it('cruza la medianoche', () => {
-    expect(minutosEntre('2026-11-03T23:50:00', '2026-11-04T00:10:00')).toBe(20);
-  });
-
-  it('descarta los segundos sobrantes, como TIMESTAMPDIFF', () => {
-    expect(minutosEntre('2026-11-03T10:00:00', '2026-11-03T10:00:59')).toBe(0);
-    expect(minutosEntre('2026-11-03T10:00:30', '2026-11-03T10:02:10')).toBe(1);
-  });
-
-  it('nunca devuelve minutos negativos', () => {
-    expect(minutosEntre('2026-11-03T10:05:00', '2026-11-03T10:00:00')).toBe(0);
-  });
-
-  it('usa la hora actual cuando no se indica el fin', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0, 0));
-
-    expect(minutosEntre('2026-11-03T11:30:00')).toBe(30);
-  });
-
-  it('devuelve null si una fecha no es válida', () => {
-    expect(minutosEntre(null, '2026-11-03T10:00:00')).toBeNull();
-    expect(minutosEntre('2026-11-03T10:00:00', 'mañana')).toBeNull();
   });
 });

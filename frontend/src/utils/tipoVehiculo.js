@@ -43,12 +43,6 @@ export function tipoSegunPlaca(identificador) {
   return TIPOS.BICICLETA;
 }
 
-/** Id del tipo que corresponde a la placa, buscado en el catálogo de tipos. */
-export function idTipoSegunPlaca(identificador, tipos) {
-  const nombre = tipoSegunPlaca(identificador);
-  return tipos.find((tipo) => tipo.nombre === nombre)?.idTipo ?? null;
-}
-
 // Nombres que en pantalla se muestran distinto que en la base. Solo cambia lo visual: la
 // base y el backend siguen usando "Camión".
 const NOMBRES_VISIBLES = {
