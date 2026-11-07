@@ -288,8 +288,11 @@ class SeguridadApiTest extends PruebaApi {
         try (HttpClient cliente = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()) {
             String base = "http://localhost:" + servidorSinBase.getPuerto() + "/api";
 
+            // Con token: para revisar la sesión el backend va a la base, que no responde
+            // (sin token respondería 401 antes de tocarla).
             HttpResponse<String> vehiculos = cliente.send(
-                    HttpRequest.newBuilder(URI.create(base + "/vehiculos")).GET().build(),
+                    HttpRequest.newBuilder(URI.create(base + "/vehiculos"))
+                            .header("Authorization", "Bearer token-cualquiera").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
             RespuestaHttp error = new RespuestaHttp(vehiculos.statusCode(), vehiculos.body(),
                     vehiculos.headers());

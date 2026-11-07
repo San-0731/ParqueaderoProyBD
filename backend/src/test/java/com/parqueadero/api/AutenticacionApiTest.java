@@ -135,7 +135,7 @@ class AutenticacionApiTest extends PruebaApi {
 
     @Test
     void yoSinTokenResponde401() {
-        RespuestaHttp respuesta = get("/auth/yo");
+        RespuestaHttp respuesta = enviar("GET", "/auth/yo", null, null);
 
         assertNoAutenticado(respuesta, Peticion.MENSAJE_SIN_SESION);
     }
@@ -189,7 +189,7 @@ class AutenticacionApiTest extends PruebaApi {
 
     @Test
     void cerrarSesionSinTokenResponde401() {
-        assertNoAutenticado(post("/auth/logout", null), Peticion.MENSAJE_SIN_SESION);
+        assertNoAutenticado(enviar("POST", "/auth/logout", null, null), Peticion.MENSAJE_SIN_SESION);
     }
 
     // ------------------------------------------------------------ auxiliares

@@ -153,6 +153,17 @@ public final class Router {
     }
 
     /**
+     * Las rutas públicas (sin rol), como {@code "GET /api/salud"}. Sirve para
+     * comprobar en una prueba que ninguna ruta quedó abierta por olvido.
+     */
+    public List<String> rutasPublicas() {
+        return rutas.stream()
+                .filter(ruta -> ruta.rolMinimo() == null)
+                .map(ruta -> ruta.metodo() + " " + ruta.patron())
+                .toList();
+    }
+
+    /**
      * Atiende una petición: busca la ruta, lee la query, arma la
      * {@link Peticion} y llama al manejador.
      *

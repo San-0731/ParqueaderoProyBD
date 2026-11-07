@@ -115,9 +115,10 @@ public final class Servidor {
 
     /**
      * Crea los handlers (con sus servicios y DAO) y registra todas las rutas de
-     * la API.
+     * la API con el rol que exige cada una. Es package-private para que una
+     * prueba compruebe que solo las rutas previstas quedaron públicas.
      */
-    private static Router registrarRutas(ConexionBD conexionBD) {
+    static Router registrarRutas(ConexionBD conexionBD) {
         AutenticacionService autenticacionService =
                 new AutenticacionService(conexionBD, new UsuarioDAO(), new SesionDAO());
         AutenticacionHandler autenticacion = new AutenticacionHandler(autenticacionService);
@@ -139,45 +140,54 @@ public final class Servidor {
         ReporteHandler reportes = new ReporteHandler(
                 new ReporteService(conexionBD, new ReporteDAO()));
 
-        // El Router usa el servicio para convertir el token en el usuario, solo
-        // en las rutas que declaran un rol.
+        // Permisos (sección 4 de la Fase 5). Cada ruta declara el rol mínimo que
+        // exige; los roles superiores también pasan (DBA ⊇ ADMINISTRADOR ⊇ OPERADOR).
+        // Solo /salud y /auth/login son públicas. El Router usa el servicio de
+        // autenticación para convertir el token en el usuario.
+        Rol operador = Rol.OPERADOR;
+        Rol administrador = Rol.ADMINISTRADOR;
         return new Router(autenticacionService::usuarioDeToken)
                 .get("/api/salud", salud::consultar)
 
                 .post("/api/auth/login", autenticacion::iniciarSesion)
-                .post("/api/auth/logout", Rol.OPERADOR, autenticacion::cerrarSesion)
-                .get("/api/auth/yo", Rol.OPERADOR, autenticacion::yo)
+                .post("/api/auth/logout", operador, autenticacion::cerrarSesion)
+                .get("/api/auth/yo", operador, autenticacion::yo)
 
-                .get("/api/vehiculos", vehiculos::listar)
-                .get("/api/vehiculos/{id}", vehiculos::buscarPorId)
-                .post("/api/vehiculos", vehiculos::crear)
-                .put("/api/vehiculos/{id}", vehiculos::actualizar)
+                // El operador registra vehículos y propietarios nuevos; solo el
+                // administrador los edita.
+                .get("/api/vehiculos", operador, vehiculos::listar)
+                .get("/api/vehiculos/{id}", operador, vehiculos::buscarPorId)
+                .post("/api/vehiculos", operador, vehiculos::crear)
+                .put("/api/vehiculos/{id}", administrador, vehiculos::actualizar)
 
-                .get("/api/tipos-vehiculo", catalogos::tiposVehiculo)
-                .get("/api/metodos-pago", catalogos::metodosPago)
-                .get("/api/tarifas/vigente", catalogos::tarifasVigentes)
-                .get("/api/marcas", catalogos::marcas)
-                .get("/api/modelos", catalogos::modelos)
+                .get("/api/tipos-vehiculo", operador, catalogos::tiposVehiculo)
+                .get("/api/metodos-pago", operador, catalogos::metodosPago)
+                .get("/api/tarifas/vigente", operador, catalogos::tarifasVigentes)
+                .get("/api/marcas", operador, catalogos::marcas)
+                .get("/api/modelos", operador, catalogos::modelos)
 
-                .get("/api/clientes", clientes::listar)
-                .get("/api/clientes/{id}", clientes::buscarPorId)
-                .post("/api/clientes", clientes::crear)
-                .put("/api/clientes/{id}", clientes::actualizar)
+                .get("/api/clientes", operador, clientes::listar)
+                .get("/api/clientes/{id}", operador, clientes::buscarPorId)
+                .post("/api/clientes", operador, clientes::crear)
+                .put("/api/clientes/{id}", administrador, clientes::actualizar)
 
-                .get("/api/espacios", espacios::listar)
-                .get("/api/espacios/{id}", espacios::buscarPorId)
-                .patch("/api/espacios/{id}/habilitado", espacios::cambiarHabilitado)
+                // El operador ve los espacios; habilitarlos o deshabilitarlos es del administrador.
+                .get("/api/espacios", operador, espacios::listar)
+                .get("/api/espacios/{id}", operador, espacios::buscarPorId)
+                .patch("/api/espacios/{id}/habilitado", administrador, espacios::cambiarHabilitado)
 
                 // /registros/activos tiene prioridad sobre /registros/{id}: el
                 // Router prefiere el segmento literal sobre el parámetro.
-                .post("/api/registros/entrada", registros::registrarEntrada)
-                .get("/api/registros/activos", registros::activos)
-                .get("/api/registros", registros::historial)
-                .get("/api/registros/{id}", registros::buscarPorId)
-                .get("/api/registros/{id}/liquidacion", salidas::liquidar)
-                .post("/api/registros/{id}/salida", salidas::registrarSalida)
+                .post("/api/registros/entrada", operador, registros::registrarEntrada)
+                .get("/api/registros/activos", operador, registros::activos)
+                .get("/api/registros", operador, registros::historial)
+                .get("/api/registros/{id}", operador, registros::buscarPorId)
+                .get("/api/registros/{id}/liquidacion", operador, salidas::liquidar)
+                .post("/api/registros/{id}/salida", operador, salidas::registrarSalida)
 
-                .get("/api/reportes/ingresos", reportes::ingresos)
-                .get("/api/reportes/ocupacion", reportes::ocupacion);
+                // Los ingresos (dinero) son solo del administrador. La ocupación la
+                // usa también el tablero del operador (cupos libres por tipo).
+                .get("/api/reportes/ingresos", administrador, reportes::ingresos)
+                .get("/api/reportes/ocupacion", operador, reportes::ocupacion);
     }
 }
