@@ -205,7 +205,7 @@ Implementados en `database/migrations/V005__triggers.sql`. En `BEFORE UPDATE` de
 ## Datos iniciales
 
 Catálogos (`V002__datos_catalogo.sql`):
-- `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión.
+- `tipo_vehiculo`: Moto, Bicicleta, Carro, Camión. El backend asigna el tipo según la placa: `ABC123` es Carro, `ABC12D` es Moto, `R12345` o `S12345` es Camión y cualquier otra es Bicicleta. La placa y el tipo no se pueden cambiar después de registrar el vehículo. En el frontend, "Camión" se muestra como "Camión de carga pesada".
 - `metodo_pago`: PSE, Nequi y Daviplata con `requiere_referencia` TRUE; Efectivo con FALSE.
 - `tarifa`: dos por tipo. Las antiguas rigen desde 2025-01-01 (Moto 1.800, Bicicleta 800, Carro 4.500, Camión 8.000) y las actuales desde 2026-10-01 (Moto 2.000, Bicicleta 1.000, Carro 5.000, Camión 9.000).
 - `espacio`: 20 en 2 pisos. Piso 1: zona A (8 carros) y zona M (4 motos). Piso 2: zona B (4 carros; el 2-B-04 está deshabilitado), zona C (2 camiones) y zona K (2 bicicletas).

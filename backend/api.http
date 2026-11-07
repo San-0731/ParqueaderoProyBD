@@ -81,18 +81,42 @@ GET {{base}}/vehiculos/abc
 # =============================================================================
 
 ### Crear vehículo (el identificador se guarda normalizado como XYZ987)
-# Esperado: 201 con el vehículo creado y su idVehiculo
+# El tipo NO se envía: se asigna según la placa (TipoPorPlaca). XYZ987 tiene
+# forma de placa de carro (ABC123), así que queda con idTipo 3 (Carro).
+# Esperado: 201 con el vehículo creado, su idVehiculo e "idTipo": 3
 # (si XYZ987 ya existía: 409 REGLA_NEGOCIO)
 POST {{base}}/vehiculos
 Content-Type: application/json
 
 {
   "identificador": "xyz-987",
-  "idTipo": 3,
   "idModelo": 1,
   "idCliente": 1,
   "color": "Rojo",
   "anio": 2020
+}
+
+### Crear una moto: ABC34E tiene forma de placa de moto (ABC12D)
+# Esperado: 201 con "idTipo": 1 (Moto)
+# (si ABC34E ya existía: 409 REGLA_NEGOCIO)
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "ABC34E",
+  "idCliente": 1
+}
+
+### Crear enviando un tipo que no coincide con la placa
+# Esperado: 400 DATOS_INVALIDOS
+# "Por su placa, AAA111 es Carro (idTipo 3); no se puede registrar con idTipo 1."
+POST {{base}}/vehiculos
+Content-Type: application/json
+
+{
+  "identificador": "AAA111",
+  "idTipo": 1,
+  "idCliente": 1
 }
 
 ### Crear con una placa que ya existe
@@ -102,12 +126,11 @@ Content-Type: application/json
 
 {
   "identificador": "XYZ987",
-  "idTipo": 3,
   "idCliente": 1
 }
 
-### Crear sin los campos obligatorios
-# Esperado: 400 DATOS_INVALIDOS con los dos errores en el mismo mensaje
+### Crear sin el propietario (obligatorio)
+# Esperado: 400 DATOS_INVALIDOS "El propietario (idCliente) es obligatorio."
 POST {{base}}/vehiculos
 Content-Type: application/json
 
@@ -122,17 +145,6 @@ Content-Type: application/json
 
 { "identificador":
 
-### Crear con un tipo de vehículo que no existe (llave foránea)
-# Esperado: 400 DATOS_INVALIDOS "El tipo de vehículo indicado no existe."
-POST {{base}}/vehiculos
-Content-Type: application/json
-
-{
-  "identificador": "AAA111",
-  "idTipo": 99,
-  "idCliente": 1
-}
-
 ### Crear con un cliente que no existe (llave foránea)
 # Esperado: 400 DATOS_INVALIDOS "El cliente indicado no existe."
 POST {{base}}/vehiculos
@@ -140,19 +152,17 @@ Content-Type: application/json
 
 {
   "identificador": "AAA111",
-  "idTipo": 3,
   "idCliente": 999
 }
 
 ### Crear con un id negativo (fuera del rango de INT UNSIGNED)
-# Esperado: 400 DATOS_INVALIDOS "El valor de 'id_tipo' está fuera del rango permitido."
+# Esperado: 400 DATOS_INVALIDOS "El valor de 'id_cliente' está fuera del rango permitido."
 POST {{base}}/vehiculos
 Content-Type: application/json
 
 {
   "identificador": "AAA111",
-  "idTipo": -1,
-  "idCliente": 1
+  "idCliente": -1
 }
 
 ### Crear con un año fuera de rango (CHECK de la base de datos)
@@ -162,14 +172,14 @@ Content-Type: application/json
 
 {
   "identificador": "AAA111",
-  "idTipo": 3,
   "idCliente": 1,
   "anio": 1800
 }
 
 ###
 # =============================================================================
-# Vehículos: actualizar (PUT reemplaza todos los datos del vehículo)
+# Vehículos: actualizar (PUT reemplaza modelo, propietario, color y año; los que
+# no se envían quedan en null). La placa y el tipo NO se pueden cambiar.
 # =============================================================================
 
 ### Buscar el vehículo de prueba XYZ987 (ejecutar ANTES de los PUT siguientes)
@@ -178,14 +188,12 @@ Content-Type: application/json
 # @name vehiculoPrueba
 GET {{base}}/vehiculos?identificador=XYZ987
 
-### Actualizar el color del vehículo de prueba
-# Esperado: 200 con el vehículo y "color": "Azul"
+### Actualizar el color del vehículo de prueba (sin enviar placa ni tipo)
+# Esperado: 200 con el vehículo, "identificador": "XYZ987", "idTipo": 3 y "color": "Azul"
 PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
 Content-Type: application/json
 
 {
-  "identificador": "XYZ987",
-  "idTipo": 3,
   "idModelo": 1,
   "idCliente": 1,
   "color": "Azul",
@@ -198,21 +206,39 @@ PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
 Content-Type: application/json
 
 {
-  "identificador": "XYZ987",
-  "idTipo": 3,
   "idModelo": 1,
   "idCliente": 1,
   "anio": 2020
 }
 
-### Cambiar la placa a una que ya tiene otro vehículo
-# Esperado: 409 REGLA_NEGOCIO "Ya existe un vehículo con la placa o código 'KLM234'."
+### Enviar la misma placa (escrita de otra forma) no es un cambio
+# Esperado: 200
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "identificador": "xyz-987",
+  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Intentar cambiar la placa
+# Esperado: 400 DATOS_INVALIDOS "La placa no se puede cambiar."
 PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
 Content-Type: application/json
 
 {
   "identificador": "KLM234",
-  "idTipo": 3,
+  "idCliente": 1
+}
+
+### Intentar cambiar el tipo
+# Esperado: 400 DATOS_INVALIDOS "El tipo no se puede cambiar: sale de la placa."
+PUT {{base}}/vehiculos/{{vehiculoPrueba.response.body.$[0].idVehiculo}}
+Content-Type: application/json
+
+{
+  "idTipo": 1,
   "idCliente": 1
 }
 
@@ -222,8 +248,6 @@ PUT {{base}}/vehiculos/999
 Content-Type: application/json
 
 {
-  "identificador": "ZZZ999",
-  "idTipo": 3,
   "idCliente": 1
 }
 
