@@ -6,6 +6,7 @@ import Alerta from '../../components/ui/Alerta.jsx';
 import Boton from '../../components/ui/Boton.jsx';
 import Cargando from '../../components/ui/Cargando.jsx';
 import EstadoVacio from '../../components/ui/EstadoVacio.jsx';
+import IconoActualizando from '../../components/ui/IconoActualizando.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { clasesBoton } from '../../components/ui/estilos.js';
 import { useConsulta } from '../../hooks/useConsulta.js';
@@ -17,11 +18,6 @@ import { agruparPorPisoYZona, cargarTablero, tipoElegido } from './datosTablero.
 
 /** Cada cuánto se actualiza solo el tablero. */
 const INTERVALO_ACTUALIZACION_MS = 30_000;
-
-/** Ícono de "Actualizar" que gira mientras llega la respuesta (sin deshabilitar el botón). */
-function IconoActualizando(props) {
-  return <RefreshCw {...props} className={`${props.className} motion-safe:animate-spin`} />;
-}
 
 /**
  * Tablero de espacios (pantalla de inicio): el letrero de cupos libres por tipo y la

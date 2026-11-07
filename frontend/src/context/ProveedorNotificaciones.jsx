@@ -48,7 +48,7 @@ function ProveedorNotificaciones({ children }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-60 flex flex-col gap-3 p-4 sm:right-0 sm:left-auto sm:w-96"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-60 flex flex-col gap-3 p-4 sm:right-0 sm:left-auto sm:w-96 print:hidden"
       >
         {avisos.map(({ id, tipo, mensaje }) => {
           const { icono: Icono, barra, color } = TIPOS[tipo];

@@ -44,7 +44,8 @@ function Alerta({ tipo = 'info', titulo, accion, children }) {
   return (
     <div role={rol} className={`flex flex-wrap items-start gap-3 rounded-xl border p-4 ${clases}`}>
       <Icono aria-hidden="true" className={`mt-0.5 size-5 shrink-0 ${color}`} />
-      <div className="min-w-0 flex-1">
+      {/* basis-48: si no cabe junto a la acción, la acción baja de línea (en vez de apretar el texto). */}
+      <div className="min-w-0 flex-1 basis-48">
         {titulo && <p className={`font-semibold ${color}`}>{titulo}</p>}
         {children && <div className="text-asfalto">{children}</div>}
       </div>

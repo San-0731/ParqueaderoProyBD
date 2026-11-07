@@ -56,6 +56,28 @@
   );
 }
 
+/*
+ * Borde dentado de la tirilla del recibo (como el papel cortado de una caja registradora):
+ * una máscara con medios círculos recortados arriba y abajo. Solo en pantalla: al imprimir
+ * el recibo usa print:[mask:none].
+ */
+@utility borde-tirilla {
+  mask:
+    radial-gradient(circle at 50% 0, transparent 6px, #000 6.5px) top / 16px 51% repeat-x,
+    radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) bottom / 16px 51% repeat-x;
+}
+
+/* Impresión (el recibo de salida): hoja blanca y márgenes pequeños. */
+@media print {
+  @page {
+    margin: 6mm;
+  }
+
+  body {
+    background: white;
+  }
+}
+
 @layer base {
   body {
     @apply bg-concreto font-sans text-asfalto antialiased;

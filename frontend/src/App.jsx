@@ -3,10 +3,10 @@ import Layout from './components/layout/Layout.jsx';
 import Entrada from './pages/entrada/Entrada.jsx';
 import Espacios from './pages/Espacios.jsx';
 import Historial from './pages/Historial.jsx';
-import Liquidacion from './pages/Liquidacion.jsx';
 import NoEncontrada from './pages/NoEncontrada.jsx';
 import Reportes from './pages/Reportes.jsx';
-import Salida from './pages/Salida.jsx';
+import Liquidacion from './pages/salida/Liquidacion.jsx';
+import Salida from './pages/salida/Salida.jsx';
 import Tablero from './pages/tablero/Tablero.jsx';
 import Vehiculos from './pages/Vehiculos.jsx';
 
