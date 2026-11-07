@@ -17,6 +17,7 @@ vi.mock('./api/registros.js', () => ({
   obtenerRegistro: pendiente(),
   consultarLiquidacion: pendiente(),
   registrarSalida: pendiente(),
+  listarHistorial: pendiente(),
 }));
 vi.mock('./api/catalogos.js', () => ({
   listarTiposVehiculo: pendiente(),

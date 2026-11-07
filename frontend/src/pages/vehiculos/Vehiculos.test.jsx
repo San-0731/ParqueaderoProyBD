@@ -97,6 +97,10 @@ describe('Vehiculos', () => {
       '/salida/28',
     );
     expect(within(ficha()).getByText('Laura Camila Pérez')).toBeInTheDocument();
+    expect(within(ficha()).getByRole('link', { name: 'Ver su historial' })).toHaveAttribute(
+      'href',
+      '/historial?identificador=KLM234',
+    );
     // Su otro vehículo lleva a su ficha.
     await usuario.click(within(ficha()).getByRole('button', { name: 'Ver ABC 12D' }));
     expect(ubicacion()).toBe('?id=41');
