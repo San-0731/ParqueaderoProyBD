@@ -1,4 +1,4 @@
-import { idTipoSegunPlaca, nombreTipoVisible, tipoSegunPlaca } from './tipoVehiculo.js';
+import { nombreTipoVisible, tipoSegunPlaca } from './tipoVehiculo.js';
 
 describe('tipoSegunPlaca', () => {
   // Los mismos casos que TipoPorPlacaTest.java del backend.
@@ -28,23 +28,6 @@ describe('tipoSegunPlaca', () => {
     expect(tipoSegunPlaca('')).toBeNull();
     expect(tipoSegunPlaca(' - ')).toBeNull();
     expect(tipoSegunPlaca(null)).toBeNull();
-  });
-});
-
-describe('idTipoSegunPlaca', () => {
-  const tipos = [
-    { idTipo: 1, nombre: 'Moto' },
-    { idTipo: 3, nombre: 'Carro' },
-    { idTipo: 4, nombre: 'Camión' },
-  ];
-
-  it('busca el id del tipo en el catálogo', () => {
-    expect(idTipoSegunPlaca('KLM234', tipos)).toBe(3);
-    expect(idTipoSegunPlaca('R48213', tipos)).toBe(4);
-  });
-
-  it('devuelve null si el catálogo no tiene ese tipo', () => {
-    expect(idTipoSegunPlaca('BICI0007', tipos)).toBeNull();
   });
 });
 

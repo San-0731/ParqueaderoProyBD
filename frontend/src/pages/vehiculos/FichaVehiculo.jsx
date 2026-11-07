@@ -9,10 +9,13 @@ import { formatearFechaHora, SIN_DATO } from '../../utils/formato.js';
 import { formatearPlaca } from '../../utils/identificador.js';
 import { nombrePropietario } from './datosVehiculos.js';
 
-/** Un dato de la ficha: etiqueta pequeña arriba y valor debajo. */
-function Dato({ etiqueta, children }) {
+/**
+ * Un dato de la ficha: etiqueta pequeña arriba y valor debajo. El <div> que agrupa dt y dd debe
+ * ser hijo directo del <dl> (por eso la clase va aquí y no en otro div alrededor).
+ */
+function Dato({ etiqueta, className = '', children }) {
   return (
-    <div>
+    <div className={className}>
       <dt className="text-sm text-tenue">{etiqueta}</dt>
       <dd className="font-medium">{children ?? SIN_DATO}</dd>
     </div>
@@ -96,9 +99,9 @@ function FichaVehiculo({ fila, onEditarVehiculo, onEditarPropietario, onElegir }
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-          <div className="col-span-2">
-            <Dato etiqueta="Nombre">{nombrePropietario(propietario)}</Dato>
-          </div>
+          <Dato etiqueta="Nombre" className="col-span-2">
+            {nombrePropietario(propietario)}
+          </Dato>
           <Dato etiqueta="Documento">{propietario?.documento}</Dato>
           <Dato etiqueta="Teléfono">{propietario?.telefono}</Dato>
         </dl>

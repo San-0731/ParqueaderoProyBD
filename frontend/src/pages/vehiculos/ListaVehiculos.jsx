@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import Placa from '../../components/ui/Placa.jsx';
-import { formatearPlaca } from '../../utils/identificador.js';
 import { nombrePropietario } from './datosVehiculos.js';
 
 // Teclas que mueven la selección: cuánto avanzar desde la posición actual.
@@ -80,15 +79,6 @@ function ListaVehiculos({ filas, idElegido, onElegir }) {
 function FilaVehiculo({ ref, fila, elegido, tabIndex, onElegir }) {
   const { vehiculo, tipo, modelo, propietario, activo } = fila;
   const nombre = nombrePropietario(propietario);
-  const descripcion = [
-    formatearPlaca(vehiculo.identificador),
-    tipo,
-    modelo ?? 'sin marca ni modelo',
-    nombre,
-    activo && 'dentro del parqueadero',
-  ]
-    .filter(Boolean)
-    .join(', ');
 
   return (
     <button
@@ -96,8 +86,6 @@ function FilaVehiculo({ ref, fila, elegido, tabIndex, onElegir }) {
       type="button"
       tabIndex={tabIndex}
       aria-current={elegido ? 'true' : undefined}
-      // Nombre completo: el texto está repartido en varios bloques y se leería pegado.
-      aria-label={descripcion}
       onClick={onElegir}
       className={`relative flex w-full flex-col gap-1 rounded-xl border bg-white px-4 py-3 text-left transition duration-150 ease-out ${
         elegido
@@ -106,14 +94,17 @@ function FilaVehiculo({ ref, fila, elegido, tabIndex, onElegir }) {
       }`}
     >
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Placa identificador={vehiculo.identificador} />
+        {/* Los espacios ({' '}) separan las palabras en el nombre del botón: "KLM 234 Carro
+            Dentro Mazda 3, Laura…", el mismo texto que se ve (WCAG 2.5.3). */}
+        <Placa identificador={vehiculo.identificador} />{' '}
         <span className="font-semibold">{tipo}</span>
+        {activo && ' '}
         {activo && (
           <span className="ml-auto rounded-full bg-ocupado-claro px-2.5 py-0.5 text-sm font-semibold text-ocupado">
             Dentro
           </span>
         )}
-      </span>
+      </span>{' '}
       <span className="truncate text-sm text-tenue">
         {modelo ?? 'Sin marca ni modelo'}
         {nombre && `, ${nombre}`}

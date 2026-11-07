@@ -107,6 +107,24 @@ describe('navegación', () => {
     expect(botonMenu).toHaveAttribute('aria-expanded', 'false');
   });
 
+  // Cada pantalla pone su título en la pestaña del navegador (EncabezadoPagina usa <title>).
+  it.each([
+    ['/', 'Tablero de espacios'],
+    ['/entrada', 'Registrar entrada'],
+    ['/salida', 'Vehículos dentro'],
+    ['/salida/28', 'Cobrar salida'],
+    ['/vehiculos', 'Vehículos y propietarios'],
+    ['/historial', 'Historial de parqueos'],
+    ['/reportes', 'Reportes'],
+    ['/espacios', 'Administración de espacios'],
+    ['/no-existe', 'Página no encontrada'],
+  ])('%s pone el título de la pestaña "%s | Parqueadero"', (ruta, nombre) => {
+    renderizarEn(ruta);
+
+    expect(titulo(nombre)).toBeInTheDocument();
+    expect(document.title).toBe(`${nombre} | Parqueadero`);
+  });
+
   it('el enlace "Saltar al contenido" apunta al contenido principal', () => {
     renderizarEn('/');
 

@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import Insignia from '../../components/ui/Insignia.jsx';
 import Placa from '../../components/ui/Placa.jsx';
 import { formatearDuracion } from '../../utils/formato.js';
-import { formatearPlaca } from '../../utils/identificador.js';
 
 // "Pintura de piso": cada estado se parece a cómo se ve el cajón en el parqueadero.
 const BASE =
@@ -25,74 +24,72 @@ const ESTILOS = {
  * - ocupado: enlace a la liquidación de su registro activo (/salida/28);
  * - deshabilitado: botón que avisa por qué no se puede usar (onDeshabilitado).
  *
- * El nombre accesible (aria-label) dice todo en una frase para el lector de pantalla:
- * "Espacio A-02, piso 1, ocupado por KLM 234 hace 2 h 15 min: registrar salida".
+ * El nombre accesible es el mismo texto que se ve, separado con espacios, más el contexto al
+ * final solo para el lector de pantalla: "A-02 KLM 234 2 h 15 min (piso 1, ocupado): registrar
+ * salida". Así quien usa control por voz puede decir lo que ve ("A-02") y el lector de pantalla
+ * oye lo que hace el enlace (regla "etiqueta en el nombre", WCAG 2.5.3).
  *
  * @param espacio un espacio de agruparPorPisoYZona (con codigo, estado y registro)
  */
 function TarjetaEspacio({ espacio, onDeshabilitado }) {
   const { idEspacio, codigo, piso, estado, registro, habilitado } = espacio;
-  const nombre = `Espacio ${codigo}, piso ${piso}`;
   const clases = `${BASE} ${ESTILOS[estado]}`;
   const codigoVisible = (
     <span className="font-condensada text-2xl leading-none font-bold">{codigo}</span>
   );
+  // Contexto que no se ve: va al final para no cortar el texto visible en el nombre accesible.
+  const contexto = (texto) => (
+    <>
+      {' '}
+      <span className="sr-only">{texto}</span>
+    </>
+  );
 
   if (estado === 'libre') {
     return (
-      <Link
-        to={`/entrada?idEspacio=${idEspacio}`}
-        aria-label={`${nombre}, libre: registrar entrada`}
-        className={clases}
-      >
-        {codigoVisible}
-        <Insignia estado="libre" />
+      <Link to={`/entrada?idEspacio=${idEspacio}`} className={clases}>
+        {codigoVisible} <Insignia estado="libre" />
+        {contexto(`(piso ${piso}): registrar entrada`)}
       </Link>
     );
   }
 
   if (estado === 'deshabilitado') {
     return (
-      <button
-        type="button"
-        onClick={() => onDeshabilitado(espacio)}
-        aria-label={`${nombre}, deshabilitado`}
-        className={clases}
-      >
-        {codigoVisible}
-        <Insignia estado="deshabilitado" />
+      <button type="button" onClick={() => onDeshabilitado(espacio)} className={clases}>
+        {codigoVisible} <Insignia estado="deshabilitado" />
+        {contexto(`(piso ${piso})`)}
       </button>
     );
   }
 
   // Ocupado. Si su registro no llegó (consultas cruzadas), se va a la lista de vehículos dentro.
   const tiempo = registro ? formatearDuracion(registro.minutosTranscurridos) : null;
-  const notaDeshabilitado = habilitado ? '' : ', deshabilitado';
-  const etiqueta = registro
-    ? `${nombre}, ocupado por ${formatearPlaca(registro.identificador)} hace ${tiempo}` +
-      `${notaDeshabilitado}: registrar salida`
-    : `${nombre}, ocupado${notaDeshabilitado}: ver vehículos dentro`;
 
   return (
-    <Link
-      to={registro ? `/salida/${registro.idRegistro}` : '/salida'}
-      aria-label={etiqueta}
-      className={clases}
-    >
-      {codigoVisible}
+    <Link to={registro ? `/salida/${registro.idRegistro}` : '/salida'} className={clases}>
+      {codigoVisible}{' '}
       {registro ? (
         <span className="flex flex-col items-start gap-1">
-          <Placa identificador={registro.identificador} />
+          <Placa identificador={registro.identificador} />{' '}
           <span className="text-sm font-medium text-ocupado-oscuro">{tiempo}</span>
         </span>
       ) : (
         <Insignia estado="ocupado" />
       )}
       {!habilitado && (
-        <span className="inline-flex items-center gap-1 text-sm text-tenue">
-          <Ban aria-hidden="true" className="size-4" />
-          Deshabilitado
-        </span>
+        <>
+          {' '}
+          <span className="inline-flex items-center gap-1 text-sm text-tenue">
+            <Ban aria-hidden="true" className="size-4" />
+            Deshabilitado
+          </span>
+        </>
+      )}
+      {contexto(
+        registro
+          ? `(piso ${piso}, ocupado): registrar salida`
+          : `(piso ${piso}): ver vehículos dentro`,
       )}
     </Link>
   );

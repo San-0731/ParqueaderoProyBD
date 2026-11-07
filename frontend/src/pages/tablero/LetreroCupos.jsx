@@ -7,26 +7,15 @@ function contar(cantidad, singular, plural) {
   return `${cantidad} ${cantidad === 1 ? singular : plural}`;
 }
 
-/** Frase completa para el lector de pantalla: "Carro: 9 libres de 12, 3 ocupados". */
-function describir({ nombre, libres, total, ocupados, deshabilitados }) {
-  const partes = [`${nombre}: ${contar(libres, 'libre', 'libres')} de ${total}`];
-  if (ocupados > 0) {
-    partes.push(contar(ocupados, 'ocupado', 'ocupados'));
-  }
-  if (deshabilitados > 0) {
-    partes.push(contar(deshabilitados, 'deshabilitado', 'deshabilitados'));
-  }
-  return partes.join(', ');
-}
-
 /**
  * Resumen de cupos con el aspecto del letrero de "cupos libres" que hay a la entrada de los
  * parqueaderos (panel oscuro con números grandes). Cada tipo de vehículo es además un botón
  * de filtro: al elegir "Moto", la cuadrícula muestra solo los espacios de motos.
  *
  * Los botones usan aria-pressed (botón que se queda "presionado"), así el lector de pantalla
- * dice cuál filtro está activo. Su aria-label es una frase completa porque el texto visible
- * está repartido en varias líneas que el lector leería pegadas ("Carro9de 12").
+ * dice cuál filtro está activo. Su nombre es el mismo texto que se ve ("Carro 9 libres de 12
+ * 2 ocupados"): entre las líneas hay espacios ({' '}) para que no se lean pegadas, y no se usa
+ * aria-label, así quien usa control por voz puede decir lo que ve (WCAG 2.5.3).
  *
  * @param ocupacion filas de GET /reportes/ocupacion
  * @param idTipo tipo elegido, o null para "Todos"
@@ -66,7 +55,6 @@ function LetreroCupos({ ocupacion, idTipo, onElegir }) {
               <button
                 type="button"
                 aria-pressed={elegida}
-                aria-label={describir(celda)}
                 onClick={() => onElegir(celda.idTipo)}
                 className={`flex h-full w-full flex-col items-start rounded-lg border p-3 text-left transition-colors ${
                   elegida
@@ -81,22 +69,25 @@ function LetreroCupos({ ocupacion, idTipo, onElegir }) {
                   className={`leading-snug font-semibold ${celda.idTipo === null ? 'sm:min-h-[2lh]' : 'min-h-[2lh]'}`}
                 >
                   {celda.nombre}
-                </span>
+                </span>{' '}
+                {/* Los espacios entre los textos ({' '}) hacen que el nombre accesible se lea
+                    "Moto 3 libres de 4 1 ocupado" y no "Moto3libres de 4". */}
                 <span
                   className={`mt-1 font-condensada text-4xl leading-none font-bold tabular-nums sm:text-5xl ${
                     elegida ? 'text-libre' : ''
                   }`}
                 >
                   {celda.libres}
-                </span>
+                </span>{' '}
                 <span className={`text-sm ${elegida ? 'text-tenue' : 'text-white/75'}`}>
-                  de {celda.total}
+                  {celda.libres === 1 ? 'libre' : 'libres'} de {celda.total}
                 </span>
+                {(celda.ocupados > 0 || celda.deshabilitados > 0) && ' '}
                 {(celda.ocupados > 0 || celda.deshabilitados > 0) && (
                   <span className={`mt-2 text-sm ${elegida ? 'text-tenue' : 'text-white/75'}`}>
                     {celda.ocupados > 0 && (
                       <span className="block">{contar(celda.ocupados, 'ocupado', 'ocupados')}</span>
-                    )}
+                    )}{' '}
                     {celda.deshabilitados > 0 && (
                       <span className="block">
                         {contar(celda.deshabilitados, 'deshabilitado', 'deshabilitados')}

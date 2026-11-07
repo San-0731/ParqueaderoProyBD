@@ -94,21 +94,3 @@ export function formatearDuracion(minutos) {
   }
   return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`;
 }
-
-/**
- * Minutos completos entre dos fechas, sin contar los segundos sobrantes (igual que
- * TIMESTAMPDIFF(MINUTE, ...) en MySQL y la calculadora de tarifas del backend).
- *
- * @param inicioIso fecha y hora de inicio, como la envía el backend
- * @param fin fecha final (texto ISO o Date); por defecto, ahora
- * @returns los minutos (nunca negativos: si el reloj del equipo va un poco atrás del
- *          servidor, devuelve 0), o null si alguna fecha no es válida
- */
-export function minutosEntre(inicioIso, fin = new Date()) {
-  const inicio = aFecha(inicioIso);
-  const final = fin instanceof Date ? fin : aFecha(fin);
-  if (!inicio || !final || Number.isNaN(final.getTime())) {
-    return null;
-  }
-  return Math.max(0, Math.floor((final - inicio) / 60_000));
-}

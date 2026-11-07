@@ -71,14 +71,14 @@ describe('Vehiculos', () => {
   it('lista los vehículos por placa y, sin elegir ninguno, invita a elegir', async () => {
     await renderizar();
 
-    const nombres = within(lista())
-      .getAllByRole('button')
-      .map((boton) => boton.getAttribute('aria-label'));
-    expect(nombres).toEqual([
-      'ABC 12D, Moto, Yamaha NMAX, Laura Camila Pérez',
-      'KLM 234, Carro, Mazda 3, Laura Camila Pérez, dentro del parqueadero',
-      'R48213, Camión de carga pesada, sin marca ni modelo, Jorge Enrique Torres',
-    ]);
+    // El nombre de cada botón es el mismo texto que se ve (sin aria-label).
+    const botones = within(lista()).getAllByRole('button');
+    expect(botones).toHaveLength(3);
+    expect(botones[0]).toHaveAccessibleName('ABC 12D Moto Yamaha NMAX, Laura Camila Pérez');
+    expect(botones[1]).toHaveAccessibleName('KLM 234 Carro Dentro Mazda 3, Laura Camila Pérez');
+    expect(botones[2]).toHaveAccessibleName(
+      'R48213 Camión de carga pesada Sin marca ni modelo, Jorge Enrique Torres',
+    );
     expect(screen.getByRole('heading', { name: 'Elige un vehículo' })).toBeInTheDocument();
     expect(screen.getByText('3 vehículos')).toBeInTheDocument();
   });
