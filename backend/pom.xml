@@ -31,6 +31,11 @@
         <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.6.1</maven-surefire-plugin.version>
         <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
+
+        <!-- Etiquetas (@Tag) de JUnit que NO se ejecutan. Por defecto se excluyen
+             las pruebas de integración, que necesitan MySQL; así "mvn clean package"
+             funciona sin base de datos. El perfil "integracion" vacía esta lista. -->
+        <pruebas.excluidas>integracion</pruebas.excluidas>
     </properties>
 
     <dependencies>
@@ -74,6 +79,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <!-- Salta las pruebas con @Tag("integracion") salvo con -Pintegracion -->
+                    <excludedGroups>${pruebas.excluidas}</excludedGroups>
+                </configuration>
             </plugin>
 
             <!-- Empaqueta un JAR ejecutable con todas las dependencias adentro ("fat JAR") -->
@@ -120,4 +129,34 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Pruebas de integración contra MySQL real (base de datos y API).
+             Uso: ./database/scripts/recrear-bd-pruebas.sh
+                  cd backend && mvn verify -Pintegracion
+             Ejecuta TODAS las pruebas: las unitarias y las de @Tag("integracion"). -->
+        <profile>
+            <id>integracion</id>
+            <properties>
+                <!-- Lista vacía: no se excluye ninguna etiqueta -->
+                <pruebas.excluidas></pruebas.excluidas>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Las pruebas usan la base parqueadero_test, nunca la de
+                                 desarrollo. Esta variable gana sobre el .env y sobre
+                                 la que tenga la terminal (ver Configuracion.java). -->
+                            <environmentVariables>
+                                <DB_NAME>parqueadero_test</DB_NAME>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

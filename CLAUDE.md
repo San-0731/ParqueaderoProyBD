@@ -36,11 +36,35 @@ Proyecto académico de la materia Bases de Datos.
   test:, chore:
 - Ramas: feature/<descripcion> o fix/<descripcion>, creadas desde develop.
 
+## Frontend (reglas que ya se siguen)
+- Diseño, colores y componentes: documentacion/guia_diseno_frontend.md. Toda
+  placa o código de vehículo se muestra con el componente <Placa>.
+- La URL del backend solo va en VITE_API_URL (frontend/.env.local); las
+  llamadas a la API solo salen de frontend/src/api/.
+- El tipo de vehículo sale de la placa (backend: util/TipoPorPlaca.java;
+  frontend: utils/tipoVehiculo.js; deben tener la misma regla). La placa y el
+  tipo no se pueden editar.
+- Todo tipo de vehículo que se muestre pasa por nombreTipoVisible() ("Camión"
+  se ve como "Camión de carga pesada"; en la base sigue siendo "Camión").
+- El frontend no calcula cobros: usa los valores de la liquidación del backend.
+- npm test -- --run incluye la revisión de accesibilidad con axe-core
+  (src/accesibilidad.test.jsx).
+
 ## Comandos
-- Frontend: cd frontend && npm install && npm run dev
+- Frontend (desde frontend/; la primera vez: cp .env.example .env.local):
+  npm install, npm run dev (http://localhost:5173), npm test -- --run
+  (pruebas Vitest), npm run test:cobertura (cobertura, reporte en coverage/),
+  npm run test:e2e (Playwright, e2e/; requiere MySQL y el backend con
+  DB_NAME=parqueadero_test encendidos), npm run build, npm run lint (ESLint) y npm run format
+  (Prettier)
 - Backend: cd backend && mvn clean package (compila y corre las pruebas JUnit)
   y java -jar target/parqueadero-backend.jar (requiere MySQL encendido;
   responde en http://localhost:8080/api; salud en /api/salud)
+- Pruebas de integración (MySQL real, base aparte parqueadero_test; las
+  pruebas llevan @Tag("integracion") heredando de integracion/PruebaIntegracion
+  y mvn clean package las salta):
+  ./database/scripts/recrear-bd-pruebas.sh
+  cd backend && mvn verify -Pintegracion
 - Probar la API: backend/api.http (extensión REST Client)
 - Base de datos: docker compose up -d (desde la raíz; ver documentacion/guia_docker.md)
 

@@ -1,17 +1,21 @@
 package com.parqueadero.service;
 
 import com.parqueadero.config.ConexionBD;
+import com.parqueadero.dao.TipoVehiculoDAO;
 import com.parqueadero.dao.VehiculoDAO;
 import com.parqueadero.exception.DatosInvalidosException;
 import com.parqueadero.exception.NoEncontradoException;
+import com.parqueadero.model.TipoVehiculo;
 import com.parqueadero.model.Vehiculo;
 import com.parqueadero.util.Identificadores;
+import com.parqueadero.util.TipoPorPlaca;
 import com.parqueadero.util.TraductorErroresSQL;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Lógica de negocio de los vehículos.
@@ -21,6 +25,14 @@ import java.util.List;
  * {@link TraductorErroresSQL}. Las reglas que ya aplica la base de datos
  * (formato del identificador, rango del año, llaves foráneas, valores únicos)
  * no se repiten aquí: se dejan a MySQL y se traduce su error.
+ *
+ * <p>Dos reglas propias del negocio:
+ * <ul>
+ *   <li>El tipo sale de la placa ({@link TipoPorPlaca}): al registrar no hace
+ *       falta enviarlo y, si se envía, debe coincidir.</li>
+ *   <li>La placa y el tipo no se pueden cambiar después de registrar el
+ *       vehículo, para evitar alteraciones (por ejemplo, cobrar otra tarifa).</li>
+ * </ul>
  */
 public final class VehiculoService {
 
@@ -30,11 +42,14 @@ public final class VehiculoService {
 
     private final ConexionBD conexionBD;
     private final VehiculoDAO vehiculoDAO;
+    private final TipoVehiculoDAO tipoVehiculoDAO;
 
     /** Las dependencias se reciben por el constructor (inyección de dependencias manual). */
-    public VehiculoService(ConexionBD conexionBD, VehiculoDAO vehiculoDAO) {
+    public VehiculoService(ConexionBD conexionBD, VehiculoDAO vehiculoDAO,
+            TipoVehiculoDAO tipoVehiculoDAO) {
         this.conexionBD = conexionBD;
         this.vehiculoDAO = vehiculoDAO;
+        this.tipoVehiculoDAO = tipoVehiculoDAO;
     }
 
     /** Devuelve todos los vehículos ordenados por id. */
@@ -105,15 +120,22 @@ public final class VehiculoService {
     /**
      * Registra un vehículo nuevo. Se ignora {@code datos.idVehiculo()}.
      *
+     * <p>El tipo se asigna según la placa. {@code datos.idTipo()} es opcional:
+     * si viene, debe ser el mismo que el de la placa.
+     *
      * @return el vehículo tal como quedó guardado, con su id
-     * @throws DatosInvalidosException si los datos no son válidos o una llave
-     *         foránea no existe
+     * @throws DatosInvalidosException si los datos no son válidos, el tipo
+     *         enviado no coincide con la placa o una llave foránea no existe
      * @throws com.parqueadero.exception.ReglaNegocioException si el
      *         identificador ya está registrado
      */
     public Vehiculo crear(Vehiculo datos) {
-        Vehiculo vehiculo = validar(datos);
+        Vehiculo validado = validar(datos);
         try (Connection conexion = conexionBD.obtenerConexion()) {
+            TipoVehiculo tipo = tipoSegunPlaca(conexion, validado.identificador());
+            revisarTipoEnviado(validado.identificador(), validado.idTipo(), tipo);
+            Vehiculo vehiculo = new Vehiculo(null, validado.identificador(), tipo.idTipo(),
+                    validado.idModelo(), validado.idCliente(), validado.color(), validado.anio());
             long idGenerado = vehiculoDAO.insertar(conexion, vehiculo);
             return vehiculoDAO.buscarPorId(conexion, idGenerado)
                     .orElseThrow(() -> new IllegalStateException(
@@ -124,18 +146,30 @@ public final class VehiculoService {
     }
 
     /**
-     * Actualiza todos los datos del vehículo {@code idVehiculo}. Se usa el id
+     * Actualiza los datos del vehículo {@code idVehiculo}: modelo, propietario,
+     * color y año (los que no se envían quedan en {@code null}). Se usa el id
      * recibido (el de la ruta) y se ignora {@code datos.idVehiculo()}.
      *
+     * <p>La placa y el tipo no cambian: se conservan los guardados. Si se envían,
+     * deben ser los mismos.
+     *
      * @return el vehículo tal como quedó guardado
-     * @throws NoEncontradoException si no existe
+     * @throws NoEncontradoException   si no existe
+     * @throws DatosInvalidosException si los datos no son válidos o se intenta
+     *         cambiar la placa o el tipo
      */
     public Vehiculo actualizar(long idVehiculo, Vehiculo datos) {
-        Vehiculo validado = validar(datos);
-        Vehiculo vehiculo = new Vehiculo(idVehiculo, validado.identificador(), validado.idTipo(),
-                validado.idModelo(), validado.idCliente(), validado.color(), validado.anio());
+        if (datos == null) {
+            throw new DatosInvalidosException("Los datos del vehículo son obligatorios.");
+        }
         try (Connection conexion = conexionBD.obtenerConexion()) {
-            if (!vehiculoDAO.actualizar(conexion, vehiculo)) {
+            Vehiculo actual = vehiculoDAO.buscarPorId(conexion, idVehiculo)
+                    .orElseThrow(() -> noExisteId(idVehiculo));
+            revisarCambiosNoPermitidos(actual, datos);
+            Vehiculo validado = validar(new Vehiculo(idVehiculo, actual.identificador(),
+                    actual.idTipo(), datos.idModelo(), datos.idCliente(), datos.color(),
+                    datos.anio()));
+            if (!vehiculoDAO.actualizar(conexion, validado)) {
                 throw noExisteId(idVehiculo);
             }
             return vehiculoDAO.buscarPorId(conexion, idVehiculo)
@@ -176,9 +210,6 @@ public final class VehiculoService {
             errores.add(e.getMessage());
         }
 
-        if (datos.idTipo() == null) {
-            errores.add("El tipo de vehículo (idTipo) es obligatorio.");
-        }
         if (datos.idCliente() == null) {
             errores.add("El propietario (idCliente) es obligatorio.");
         }
@@ -197,6 +228,55 @@ public final class VehiculoService {
 
         return new Vehiculo(datos.idVehiculo(), identificador, datos.idTipo(), datos.idModelo(),
                 datos.idCliente(), color, datos.anio());
+    }
+
+    /**
+     * Busca en {@code tipo_vehiculo} el tipo que corresponde a la placa.
+     *
+     * @throws IllegalStateException si falta ese tipo en el catálogo (V002)
+     */
+    private TipoVehiculo tipoSegunPlaca(Connection conexion, String identificador)
+            throws SQLException {
+        String nombre = TipoPorPlaca.nombreTipo(identificador);
+        return tipoVehiculoDAO.buscarPorNombre(conexion, nombre)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Falta el tipo '" + nombre + "' en la tabla tipo_vehiculo (V002)."));
+    }
+
+    /**
+     * Si al registrar se envió un tipo, debe ser el que corresponde a la placa.
+     * Es package-private para probarlo con JUnit.
+     *
+     * @param idTipoEnviado el {@code idTipo} recibido, o {@code null} si no vino
+     * @throws DatosInvalidosException si no coincide
+     */
+    static void revisarTipoEnviado(String identificador, Long idTipoEnviado,
+            TipoVehiculo tipoSegunPlaca) {
+        if (idTipoEnviado != null && !idTipoEnviado.equals(tipoSegunPlaca.idTipo())) {
+            throw new DatosInvalidosException("Por su placa, " + identificador + " es "
+                    + tipoSegunPlaca.nombre() + " (idTipo " + tipoSegunPlaca.idTipo()
+                    + "); no se puede registrar con idTipo " + idTipoEnviado + ".");
+        }
+    }
+
+    /**
+     * Revisa que una actualización no cambie la placa ni el tipo. Si no se
+     * envían ({@code null} o en blanco), no hay nada que revisar. Es
+     * package-private para probarlo con JUnit.
+     *
+     * @param actual el vehículo como está guardado
+     * @param datos  lo que llegó en la petición
+     * @throws DatosInvalidosException si cambia la placa o el tipo
+     */
+    static void revisarCambiosNoPermitidos(Vehiculo actual, Vehiculo datos) {
+        String placa = datos.identificador();
+        if (placa != null && !placa.isBlank()
+                && !Identificadores.normalizar(placa).equals(actual.identificador())) {
+            throw new DatosInvalidosException("La placa no se puede cambiar.");
+        }
+        if (datos.idTipo() != null && !Objects.equals(datos.idTipo(), actual.idTipo())) {
+            throw new DatosInvalidosException("El tipo no se puede cambiar: sale de la placa.");
+        }
     }
 
     private static NoEncontradoException noExisteId(long idVehiculo) {

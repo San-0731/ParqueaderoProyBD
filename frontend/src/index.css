@@ -1,0 +1,95 @@
+/* Tailwind CSS v4: genera solo las clases que se usan en los componentes. */
+@import 'tailwindcss';
+
+/*
+ * Tokens de diseño "Señalización vial" (ver documentacion/guia_diseno_frontend.md).
+ * Cada --color-x genera las clases bg-x, text-x, border-x...; --font-x genera font-x.
+ * Para cambiar un color en toda la app basta con editarlo aquí.
+ */
+@theme {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-condensada: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+
+  /* Azul del aviso de parqueadero (P blanca): acciones principales y marca. */
+  --color-senal: #1d4e9e;
+  --color-senal-oscuro: #173f80;
+  --color-senal-claro: #e4ecf8;
+
+  /* Asfalto: barra lateral y texto principal. Concreto: fondo de la app. */
+  --color-asfalto: #2e3338;
+  --color-asfalto-claro: #3c4248;
+  --color-concreto: #e8eaeb;
+  --color-borde: #d3d7da;
+  --color-tenue: #5b636b;
+
+  /* Amarillo de las placas colombianas: SOLO placas y la sección activa del menú. */
+  --color-placa: #f5c400;
+
+  /* Estados de los espacios (siempre acompañados de texto, no solo color). */
+  --color-libre: #15703a;
+  --color-libre-claro: #e3f3e8;
+  --color-ocupado: #b42318;
+  --color-ocupado-claro: #fbe7e4;
+  --color-ocupado-oscuro: #8f1c13;
+  --color-deshabilitado: #5b636b;
+  --color-deshabilitado-claro: #eceef0;
+
+  /* Entrada de avisos y modales (solo con motion-safe: respeta "reducir movimiento"). */
+  --animate-aparecer: aparecer 180ms ease-out;
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+}
+
+/*
+ * Rayas diagonales de "zona de no parquear" para los espacios deshabilitados. Va encima del
+ * color de fondo: se usa junto con bg-white (class="rayado-deshabilitado bg-white").
+ */
+@utility rayado-deshabilitado {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-deshabilitado-claro) 0 8px,
+    transparent 8px 16px
+  );
+}
+
+/*
+ * Borde dentado de la tirilla del recibo (como el papel cortado de una caja registradora):
+ * una máscara con medios círculos recortados arriba y abajo. Solo en pantalla: al imprimir
+ * el recibo usa print:[mask:none].
+ */
+@utility borde-tirilla {
+  mask:
+    radial-gradient(circle at 50% 0, transparent 6px, #000 6.5px) top / 16px 51% repeat-x,
+    radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) bottom / 16px 51% repeat-x;
+}
+
+/* Impresión (el recibo de salida): hoja blanca y márgenes pequeños. */
+@media print {
+  @page {
+    margin: 6mm;
+  }
+
+  body {
+    background: white;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-concreto font-sans text-asfalto antialiased;
+  }
+
+  /* Foco visible en toda la app (navegación con teclado): azul sobre fondos claros... */
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-senal;
+  }
+
+  /* ...y amarillo dentro de las zonas oscuras (barra lateral asfalto), donde el azul no se ve. */
+  .superficie-oscura :focus-visible {
+    @apply outline-placa;
+  }
+}

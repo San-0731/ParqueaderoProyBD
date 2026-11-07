@@ -63,7 +63,7 @@ ROLLBACK;
 | `tarifa` | Precio por hora de cada tipo; cada tipo tiene una tarifa antigua y una actual |
 | `marca`, `modelo` | Fabricante y línea del vehículo |
 | `cliente` | Dueños de los vehículos |
-| `vehiculo` | `identificador` = placa, o código si es bicicleta |
+| `vehiculo` | `identificador` = placa, o código si es bicicleta. El tipo sale de la placa (ver abajo) |
 | `espacio` | Lugar físico (piso, zona, número) para un solo tipo de vehículo; `habilitado` = en servicio |
 | `registro_parqueo` | Cada parqueo: entrada, salida, minutos, valor y `estado` |
 | `metodo_pago` | PSE, Nequi, Daviplata y Efectivo; `requiere_referencia` indica si exige código de transacción |
@@ -97,12 +97,27 @@ Tarifas por hora:
 | Carro | 4.500 | 5.000 |
 | Camión | 8.000 | 9.000 |
 
+### Tipo según la placa
+
+El backend asigna el tipo del vehículo según la forma de la placa (`TipoPorPlaca`), y después no
+deja cambiar ni la placa ni el tipo:
+
+| Placa | Tipo |
+|---|---|
+| `ABC123` (3 letras y 3 números) | Carro |
+| `ABC12D` (3 letras, 2 números y 1 letra) | Moto |
+| `R12345` o `S12345` (remolque o semirremolque) | Camión |
+| Cualquier otra | Bicicleta |
+
+Los datos de prueba cumplen esta regla. Por eso el camión de prueba tiene placa de remolque
+(`R48213`).
+
 ### Datos útiles para armar las pruebas
 
 | Para | Usar |
 |---|---|
 | Vehículos **adentro** (`ACTIVO`) | MVC054 (carro, 1-A-02), WZE620 (carro, 2-B-02), XYZ78G (moto, 1-M-02), WTU2024A0153 (bicicleta, 2-K-02) |
-| Vehículos **afuera** | Carros: KLM234, BCD567, RTX918. Motos: ABC12D, QWE45F. Camión: TSR482. Bicicleta: BICI0007 |
+| Vehículos **afuera** | Carros: KLM234, BCD567, RTX918. Motos: ABC12D, QWE45F. Camión: R48213. Bicicleta: BICI0007 |
 | Espacios **libres** | Carro: 1-A-01, 1-A-03 a 1-A-08, 2-B-01, 2-B-03. Moto: 1-M-01. Camión: 2-C-01. Bicicleta: 2-K-01 |
 | Espacio **deshabilitado** | 2-B-04 |
 | Cliente existente | documento `1012345678` |
@@ -116,9 +131,19 @@ Tarifas por hora:
 |---|---|---|---|
 | A1 | Consistencia de los datos | Abrir y ejecutar `database/pruebas/01_consistencia_datos.sql` | En la consulta 3, **todas** las filas con `cantidad = 0`; los conteos iguales a la sección 2 |
 | A2 | Reglas (59 casos) | `bash database/pruebas/02_probar_reglas.sh` (en Linux, macOS o Git Bash) | Termina con `TODAS LAS PRUEBAS PASARON` y ninguna línea `FALLO` |
+| A3 | Reglas en JUnit (restricciones, registros activos, triggers y vistas) | `./database/scripts/recrear-bd-pruebas.sh` y luego `cd backend && mvn verify -Pintegracion` | `BUILD SUCCESS` sin pruebas fallidas |
 
 Si A2 muestra `FALLO`, la línea dice qué código se esperaba y cuál salió.
 Cópiala en el reporte.
+
+A3 corre contra la base aparte `parqueadero_test` (no toca `parqueadero`) y
+cada prueba se deshace con `rollback()`. Las clases están en
+`backend/src/test/java/com/parqueadero/bd/`: `RestriccionesTest` (UNIQUE,
+CHECK y llaves foráneas), `RegistrosActivosTest` (un vehículo y un espacio con
+un solo registro activo), `TriggersTest` (normalizar la placa, tipo del espacio
+y espacio habilitado) y `VistasTest` (las cuatro vistas). Cada prueba explica
+en su comentario la regla que comprueba; si una falla, Maven muestra el código
+de error de MySQL y la restricción esperada.
 
 ---
 
