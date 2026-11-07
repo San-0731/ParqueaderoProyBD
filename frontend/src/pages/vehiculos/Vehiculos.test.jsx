@@ -7,6 +7,7 @@ import { actualizarCliente, listarClientes } from '../../api/clientes.js';
 import { listarActivos } from '../../api/registros.js';
 import { actualizarVehiculo, crearVehiculo, listarVehiculos } from '../../api/vehiculos.js';
 import ProveedorNotificaciones from '../../context/ProveedorNotificaciones.jsx';
+import SesionDePrueba from '../../test/SesionDePrueba.jsx';
 import Vehiculos from './Vehiculos.jsx';
 import { ACTIVOS, CLIENTES, JORGE, MARCAS, MODELOS, TIPOS, VEHICULOS } from './datosPrueba.js';
 
@@ -34,17 +35,19 @@ function UbicacionActual() {
   return <p data-testid="ubicacion">{search}</p>;
 }
 
-async function renderizar(ruta = '/vehiculos') {
+async function renderizar(ruta = '/vehiculos', rol = 'ADMINISTRADOR') {
   const usuario = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[ruta]}>
-      <ProveedorNotificaciones>
-        <Routes>
-          <Route path="/vehiculos" element={<Vehiculos />} />
-          <Route path="*" element={<p>Otra pantalla</p>} />
-        </Routes>
-        <UbicacionActual />
-      </ProveedorNotificaciones>
+      <SesionDePrueba rol={rol}>
+        <ProveedorNotificaciones>
+          <Routes>
+            <Route path="/vehiculos" element={<Vehiculos />} />
+            <Route path="*" element={<p>Otra pantalla</p>} />
+          </Routes>
+          <UbicacionActual />
+        </ProveedorNotificaciones>
+      </SesionDePrueba>
     </MemoryRouter>,
   );
   await screen.findByRole('list', { name: 'Vehículos' });
@@ -104,6 +107,32 @@ describe('Vehiculos', () => {
     // Su otro vehículo lleva a su ficha.
     await usuario.click(within(ficha()).getByRole('button', { name: 'Ver ABC 12D' }));
     expect(ubicacion()).toBe('?id=41');
+  });
+
+  it('el operador ve la ficha completa, pero sin los botones de editar', async () => {
+    const usuario = await renderizar('/vehiculos', 'OPERADOR');
+
+    await usuario.click(fila('KLM 234'));
+
+    expect(within(ficha()).getByText('Laura Camila Pérez')).toBeInTheDocument();
+    expect(within(ficha()).getByRole('link', { name: 'Cobrar salida' })).toBeInTheDocument();
+    expect(
+      within(ficha()).queryByRole('button', { name: 'Editar vehículo' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(ficha()).queryByRole('button', { name: 'Editar propietario' }),
+    ).not.toBeInTheDocument();
+    // Registrar un vehículo nuevo sí puede.
+    expect(screen.getByRole('button', { name: 'Nuevo vehículo' })).toBeInTheDocument();
+  });
+
+  it('el administrador ve los botones de editar', async () => {
+    const usuario = await renderizar('/vehiculos', 'ADMINISTRADOR');
+
+    await usuario.click(fila('KLM 234'));
+
+    expect(within(ficha()).getByRole('button', { name: 'Editar vehículo' })).toBeInTheDocument();
+    expect(within(ficha()).getByRole('button', { name: 'Editar propietario' })).toBeInTheDocument();
   });
 
   it('las flechas del teclado cambian la selección y el foco', async () => {
@@ -313,9 +342,11 @@ describe('Vehiculos', () => {
     const usuario = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/vehiculos']}>
-        <ProveedorNotificaciones>
-          <Vehiculos />
-        </ProveedorNotificaciones>
+        <SesionDePrueba>
+          <ProveedorNotificaciones>
+            <Vehiculos />
+          </ProveedorNotificaciones>
+        </SesionDePrueba>
       </MemoryRouter>,
     );
 

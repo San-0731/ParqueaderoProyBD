@@ -6,6 +6,7 @@ import { ErrorApi } from '../../api/cliente.js';
 import { cambiarHabilitadoEspacio, listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import ProveedorNotificaciones from '../../context/ProveedorNotificaciones.jsx';
+import SesionDePrueba from '../../test/SesionDePrueba.jsx';
 import Espacios from './Espacios.jsx';
 import { agruparPorPiso, armarFilas, resumirEspacios } from './datosEspacios.js';
 
@@ -39,13 +40,16 @@ const TIPOS = [
 ];
 const ACTIVOS = [{ idRegistro: 28, identificador: 'MVC054', idEspacio: 2 }];
 
-function renderizar() {
+/** Dibuja la pantalla con la sesión de un rol (por defecto, administrador). */
+function renderizar(rol = 'ADMINISTRADOR') {
   const usuario = userEvent.setup();
   render(
     <MemoryRouter>
-      <ProveedorNotificaciones>
-        <Espacios />
-      </ProveedorNotificaciones>
+      <SesionDePrueba rol={rol}>
+        <ProveedorNotificaciones>
+          <Espacios />
+        </ProveedorNotificaciones>
+      </SesionDePrueba>
     </MemoryRouter>,
   );
   return usuario;
@@ -96,6 +100,38 @@ describe('Espacios', () => {
     expect(
       screen.getByText('4 espacios: 2 libres, 1 ocupado, 1 deshabilitado.'),
     ).toBeInTheDocument();
+  });
+
+  it('el operador ve los espacios, pero los interruptores están desactivados y un aviso explica por qué', async () => {
+    const usuario = renderizar('OPERADOR');
+    await screen.findByRole('table', { name: 'Espacios del piso 1' });
+
+    expect(
+      screen.getByText('Solo los administradores pueden habilitar o deshabilitar espacios.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Consulta qué espacios están en servicio y quién los ocupa.'),
+    ).toBeInTheDocument();
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toBeDisabled();
+    }
+    // Sigue viendo el mismo estado que el administrador.
+    expect(interruptor('A1-01')).toHaveAttribute('aria-checked', 'true');
+    expect(interruptor('B2-04')).toHaveAttribute('aria-checked', 'false');
+
+    await usuario.click(interruptor('A1-02'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(cambiarHabilitadoEspacio).not.toHaveBeenCalled();
+  });
+
+  it('el administrador no ve el aviso y sus interruptores funcionan', async () => {
+    renderizar('ADMINISTRADOR');
+    await screen.findByRole('table', { name: 'Espacios del piso 1' });
+
+    expect(screen.queryByText(/Solo los administradores pueden/)).not.toBeInTheDocument();
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toBeEnabled();
+    }
   });
 
   it('deshabilitar un espacio ocupado avisa que el vehículo puede salir y llama al endpoint', async () => {

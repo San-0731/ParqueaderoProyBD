@@ -1,4 +1,5 @@
-import { ErrorApi, get, patch, post, put } from './cliente.js';
+import { ErrorApi, alPerderSesion, get, patch, post, put } from './cliente.js';
+import { guardarSesion } from './sesionGuardada.js';
 
 const URL_BASE = 'http://api.prueba/api';
 
@@ -33,6 +34,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.useRealTimers();
+  window.sessionStorage.clear();
 });
 
 describe('respuestas correctas', () => {
@@ -173,5 +175,74 @@ describe('errores', () => {
 
     expect(error).toMatchObject({ codigo: 'SIN_CONFIGURACION' });
     expect(fetchSimulado).not.toHaveBeenCalled();
+  });
+});
+
+describe('sesión', () => {
+  it('sin sesión guardada no envía Authorization', async () => {
+    fetchSimulado.mockResolvedValue(respuestaJson([]));
+
+    await get('/espacios');
+
+    expect(fetchSimulado.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+  });
+
+  it('con sesión guardada envía el token en Authorization: Bearer', async () => {
+    guardarSesion({ token: 'abc123', usuario: { rol: 'OPERADOR' } });
+    fetchSimulado.mockResolvedValue(respuestaJson([]));
+
+    await get('/espacios');
+
+    expect(fetchSimulado.mock.calls[0][1].headers.Authorization).toBe('Bearer abc123');
+  });
+
+  it('un 401 a una petición con token avisa que se perdió la sesión', async () => {
+    guardarSesion({ token: 'vencido', usuario: { rol: 'OPERADOR' } });
+    const oyente = vi.fn();
+    const dejarDeEscuchar = alPerderSesion(oyente);
+    fetchSimulado.mockImplementation(async () =>
+      respuestaJson({ error: 'NO_AUTENTICADO', mensaje: 'Tu sesión terminó.' }, 401),
+    );
+
+    const error = await capturarError(get('/vehiculos'));
+
+    expect(error).toMatchObject({ estado: 401, codigo: 'NO_AUTENTICADO' });
+    expect(oyente).toHaveBeenCalledTimes(1);
+
+    dejarDeEscuchar();
+    await capturarError(get('/vehiculos'));
+    expect(oyente).toHaveBeenCalledTimes(1);
+  });
+
+  it('un 401 sin token (por ejemplo, contraseña incorrecta en el login) no es una sesión perdida', async () => {
+    const oyente = vi.fn();
+    const dejarDeEscuchar = alPerderSesion(oyente);
+    fetchSimulado.mockResolvedValue(
+      respuestaJson({ error: 'NO_AUTENTICADO', mensaje: 'Usuario o contraseña incorrectos.' }, 401),
+    );
+
+    const error = await capturarError(post('/auth/login', { nombreUsuario: 'x', clave: 'y' }));
+
+    expect(error.mensaje).toBe('Usuario o contraseña incorrectos.');
+    expect(oyente).not.toHaveBeenCalled();
+    dejarDeEscuchar();
+  });
+
+  it('un 403 no cierra la sesión', async () => {
+    guardarSesion({ token: 'tok', usuario: { rol: 'OPERADOR' } });
+    const oyente = vi.fn();
+    const dejarDeEscuchar = alPerderSesion(oyente);
+    fetchSimulado.mockResolvedValue(
+      respuestaJson(
+        { error: 'SIN_PERMISO', mensaje: 'Solo un usuario Administrador o DBA puede hacer esto.' },
+        403,
+      ),
+    );
+
+    const error = await capturarError(get('/reportes/ingresos'));
+
+    expect(error).toMatchObject({ estado: 403, codigo: 'SIN_PERMISO' });
+    expect(oyente).not.toHaveBeenCalled();
+    dejarDeEscuchar();
   });
 });
