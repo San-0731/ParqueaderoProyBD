@@ -48,6 +48,7 @@ Reglas:
 | `ui/Tarjeta` | Agrupar contenido sobre fondo blanco |
 | `ui/Tabla` | Listados; da scroll horizontal en celular y tiene una fila `pie` para los totales. Una columna con `fija: true` (por ejemplo, la placa) queda quieta al desplazar |
 | `ui/Paginacion` | "Anterior", "Página 1 de 3" y "Siguiente"; con una sola página no se muestra |
+| `ui/Interruptor` | Encendido o apagado (`role="switch"`), con el texto Sí o No al lado. Quien lo usa decide qué pasa al tocarlo (por ejemplo, pedir confirmación) |
 | `ui/Modal` | Confirmaciones y formularios de edición |
 | `ui/Alerta` | Mensaje dentro de la pantalla: `error`, `exito`, `aviso` o `info` |
 | `ui/Cargando`, `ui/EstadoVacio` | Estados de carga y de "no hay datos" |
@@ -107,7 +108,9 @@ Los componentes del dominio que usan varias pantallas van en `components/<tema>/
 | `validaciones.js` | Los mismos límites y mensajes del backend, para avisar antes de enviar |
 
 Las funciones de formato que comparten varias pantallas van en `utils/`. Por ejemplo,
-`utils/espacio.js` tiene `codigoEspacio` ("A-01") y `nombreEspacio` ("A-01, piso 1").
+`utils/espacio.js` tiene `codigoEspacio` ("A-01"), `nombreEspacio` ("A-01, piso 1") y
+`estadoEspacio` (libre, ocupado o deshabilitado; la usan el tablero y la administración de
+espacios).
 
 ## Flujo por pasos con resumen fijo (entrada)
 

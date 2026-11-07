@@ -9,7 +9,10 @@ import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 // vi.hoisted: vi.mock se mueve al inicio del archivo, así que la función también debe ir ahí.
 const { pendiente } = vi.hoisted(() => ({ pendiente: () => vi.fn(() => new Promise(() => {})) }));
 vi.mock('./api/salud.js', () => ({ consultarSalud: pendiente() }));
-vi.mock('./api/espacios.js', () => ({ listarEspacios: pendiente() }));
+vi.mock('./api/espacios.js', () => ({
+  listarEspacios: pendiente(),
+  cambiarHabilitadoEspacio: pendiente(),
+}));
 vi.mock('./api/reportes.js', () => ({
   consultarOcupacion: pendiente(),
   consultarIngresos: pendiente(),

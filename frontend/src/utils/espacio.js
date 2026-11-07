@@ -11,3 +11,20 @@ export function codigoEspacio({ zona, numero }) {
 export function nombreEspacio(espacio) {
   return `${codigoEspacio(espacio)}, piso ${espacio.piso}`;
 }
+
+/**
+ * Estado de un espacio (tablero y administración de espacios), con la misma regla del reporte
+ * de ocupación:
+ * - "ocupado" si tiene un vehículo adentro, aunque esté deshabilitado (el vehículo termina su
+ *   parqueo normalmente y hay que poder registrarle la salida);
+ * - "deshabilitado" si está fuera de servicio y vacío;
+ * - "libre" en cualquier otro caso.
+ *
+ * @param registro el parqueo activo de ese espacio, si llegó en /registros/activos
+ */
+export function estadoEspacio(espacio, registro) {
+  if (espacio.ocupado || registro) {
+    return 'ocupado';
+  }
+  return espacio.habilitado ? 'libre' : 'deshabilitado';
+}
