@@ -1,5 +1,7 @@
 # Sistema de Parqueadero
 
+[![CI](https://github.com/San-0731/ParqueaderoProyBD/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/San-0731/ParqueaderoProyBD/actions/workflows/ci.yml)
+
 Aplicación para registrar y controlar los vehículos que solicitan parqueo:
 información de los vehículos, tiempos de parqueo, ubicaciones (espacios),
 fechas de parqueo y formas de pago (PSE, Nequi, Daviplata y efectivo).
@@ -166,6 +168,7 @@ automáticamente (ver `.vscode/extensions.json`).
 │       ├── pages/      # Una carpeta por pantalla, con sus piezas y sus funciones puras
 │       └── utils/      # Formato de pesos y fechas, placas, tipos de vehículo, rangos de fechas
 ├── documentacion/      # Guías (Docker, diseño del frontend, pruebas de la base) y capturas
+├── .github/            # Integración continua (workflows/ci.yml) y plantilla de bugs
 ├── .vscode/            # Extensiones recomendadas para el equipo
 ├── docker-compose.yml  # MySQL 8 (se crea en la Fase 1; usa el .env de la raíz)
 ├── .editorconfig       # Formato común: UTF-8, LF, indentación
@@ -194,7 +197,27 @@ main      ← versión estable / entregable
    - `docs: actualizar README`
    - `refactor:`, `test:`, `chore:`
 4. Subir la rama y abrir un Pull Request hacia `develop`.
-5. Cuando `develop` esté estable, se integra en `main`.
+5. Esperar a que el CI pase (ver abajo) y fusionar.
+6. Cuando `develop` esté estable, se integra en `main`.
+
+### Integración continua (GitHub Actions)
+
+En cada push y en cada Pull Request hacia `develop` o `main`,
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta dos trabajos:
+
+| Trabajo | Qué hace |
+|---|---|
+| `backend` | Levanta un MySQL 8.4 desechable (hora -05:00, utf8mb4), crea `parqueadero_test` con `recrear-bd-pruebas.sh` en modo directo y corre `mvn -B verify -Pintegracion` (unitarias, base de datos, API y seguridad) |
+| `frontend` | `npm ci`, `npm run lint`, `npm test -- --run` y `npm run build` |
+
+La insignia de arriba muestra el estado en `develop`. Las pruebas E2E no corren en el CI:
+se ejecutan en local antes de fusionar a `main`. Para que nadie fusione con el CI en rojo,
+en GitHub: **Settings → Branches → Add branch ruleset** (o *branch protection rule*) para
+`develop` y `main`, con **Require status checks to pass** y los checks `backend` y
+`frontend` marcados como obligatorios.
+
+Los errores se reportan como *issues* con la plantilla **Reporte de bug**
+([`.github/ISSUE_TEMPLATE/bug.md`](.github/ISSUE_TEMPLATE/bug.md)).
 
 ## Cómo ejecutar
 

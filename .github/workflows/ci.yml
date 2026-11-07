@@ -1,0 +1,122 @@
+# Integración continua: en cada push y en cada Pull Request hacia develop o main, GitHub
+# ejecuta las pruebas del backend (unitarias, base de datos, API y seguridad contra un MySQL
+# real) y del frontend (lint, pruebas y compilación). Si algo falla, el PR lo muestra en rojo.
+#
+# Las pruebas E2E de Playwright no corren aquí: necesitan MySQL, backend y frontend a la vez.
+# Se ejecutan en local antes de fusionar a main (ver el README).
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+# Si llega un push nuevo a la misma rama o PR, cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Credenciales SOLO de este MySQL desechable del CI: el contenedor se crea al empezar el
+    # job y se borra al terminar. No son las credenciales reales del proyecto (esas van en el
+    # .env de cada máquina, que nunca se sube).
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: parqueadero_test
+      DB_USER: parqueadero_user
+      DB_PASSWORD: clave_app_solo_ci
+      DB_ROOT_PASSWORD: clave_root_solo_ci
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: clave_root_solo_ci
+          MYSQL_DATABASE: parqueadero
+          MYSQL_USER: parqueadero_user
+          MYSQL_PASSWORD: clave_app_solo_ci
+          TZ: America/Bogota
+        ports:
+          - 3306:3306
+        # El job espera a que MySQL responda antes de seguir.
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Java 21 (Temurin) con caché de Maven
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Los contenedores de servicio no aceptan argumentos (como --default-time-zone en
+      # docker-compose.yml), así que se configuran por SQL, igual que en local: hora de
+      # Bogotá (-05:00) y utf8mb4. SET PERSIST aplica a todas las conexiones nuevas; la
+      # segunda llamada abre una conexión nueva para mostrar los valores que quedaron.
+      - name: Configurar MySQL (zona horaria -05:00 y utf8mb4)
+        env:
+          MYSQL_PWD: ${{ env.DB_ROOT_PASSWORD }}
+        run: |
+          mysql -h 127.0.0.1 -P 3306 --protocol=TCP -uroot -e "
+            SET PERSIST time_zone = '-05:00';
+            SET PERSIST character_set_server = 'utf8mb4';
+            SET PERSIST collation_server = 'utf8mb4_unicode_ci';"
+          mysql -h 127.0.0.1 -P 3306 --protocol=TCP -uroot -e "
+            SELECT @@version, @@time_zone, @@character_set_server, NOW();"
+
+      - name: Crear la base de pruebas con las migraciones
+        env:
+          MODO_MYSQL: directo
+        run: ./database/scripts/recrear-bd-pruebas.sh
+
+      - name: Pruebas del backend (unitarias + integración)
+        working-directory: backend
+        run: mvn -B verify -Pintegracion
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Node 24 con caché de npm
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias (exactas, del package-lock.json)
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Pruebas (Vitest, incluida la accesibilidad con axe-core)
+        run: npm test -- --run
+
+      - name: Compilación
+        run: npm run build
