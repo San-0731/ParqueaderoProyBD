@@ -58,6 +58,11 @@ Proyecto académico de la materia Bases de Datos.
 - Backend: cd backend && mvn clean package (compila y corre las pruebas JUnit)
   y java -jar target/parqueadero-backend.jar (requiere MySQL encendido;
   responde en http://localhost:8080/api; salud en /api/salud)
+- Pruebas de integración (MySQL real, base aparte parqueadero_test; las
+  pruebas llevan @Tag("integracion") heredando de integracion/PruebaIntegracion
+  y mvn clean package las salta):
+  ./database/scripts/recrear-bd-pruebas.sh
+  cd backend && mvn verify -Pintegracion
 - Probar la API: backend/api.http (extensión REST Client)
 - Base de datos: docker compose up -d (desde la raíz; ver documentacion/guia_docker.md)
 
