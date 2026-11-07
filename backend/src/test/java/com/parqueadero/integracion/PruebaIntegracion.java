@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Base de todas las pruebas de integración (las que usan MySQL real).
@@ -39,7 +40,8 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li>generar placas y documentos que no existen en la base
  *       ({@link #identificadorUnico(String)}, {@link #documentoUnico()});</li>
  *   <li>crear datos mínimos ({@link #crearPropietario(Connection)},
- *       {@link #crearVehiculo(Connection, String)});</li>
+ *       {@link #crearVehiculo(Connection, String)},
+ *       {@link #crearEspacio(Connection, String, boolean)});</li>
  *   <li>borrar lo creado al terminar cada prueba ({@link #limpiarDatosCreados()}).</li>
  * </ul>
  *
@@ -64,6 +66,11 @@ public abstract class PruebaIntegracion {
     // así que estas listas solo guardan lo que creó la prueba actual.
     private final List<Long> vehiculosCreados = new ArrayList<>();
     private final List<Long> propietariosCreados = new ArrayList<>();
+    private final List<Long> espaciosCreados = new ArrayList<>();
+
+    /** Número del próximo espacio de prueba; empieza en un valor al azar para no chocar con otras ejecuciones. */
+    private static final AtomicInteger SIGUIENTE_ESPACIO =
+            new AtomicInteger(ThreadLocalRandom.current().nextInt(1_000_000));
 
     /** Vehículo creado para una prueba, con su propietario. */
     public record VehiculoPrueba(long idVehiculo, String identificador, long idTipo, long idCliente) {
@@ -195,6 +202,35 @@ public abstract class PruebaIntegracion {
         }
     }
 
+    /**
+     * Crea un espacio propio de la prueba (piso {@code P9}, zona {@code PRB},
+     * número único), para no depender de qué espacios de la semilla V003
+     * están libres. Se borra al final de la prueba.
+     *
+     * @param tipo una de las constantes de {@link TipoPorPlaca}
+     * @return el id del espacio creado
+     */
+    protected long crearEspacio(Connection conexion, String tipo, boolean habilitado)
+            throws SQLException {
+        String numero;
+        do {
+            numero = "E" + SIGUIENTE_ESPACIO.getAndIncrement();
+        } while (existe("SELECT 1 FROM espacio WHERE piso = 'P9' AND zona = 'PRB' AND numero = ?",
+                numero));
+        String sql = "INSERT INTO espacio (id_tipo, piso, zona, numero, habilitado)"
+                + " VALUES (?, 'P9', 'PRB', ?, ?)";
+        try (PreparedStatement insercion = conexion.prepareStatement(sql,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setLong(1, idTipo(conexion, tipo));
+            insercion.setString(2, numero);
+            insercion.setBoolean(3, habilitado);
+            insercion.executeUpdate();
+            long idEspacio = llaveGenerada(insercion);
+            espaciosCreados.add(idEspacio);
+            return idEspacio;
+        }
+    }
+
     /** Anota un vehículo creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
     protected void registrarVehiculoCreado(long idVehiculo) {
         vehiculosCreados.add(idVehiculo);
@@ -207,32 +243,42 @@ public abstract class PruebaIntegracion {
 
     /**
      * Borra lo que creó la prueba, en orden inverso a las llaves foráneas:
-     * pagos → registros de parqueo → vehículos → propietarios. Se ejecuta solo
-     * después de cada prueba; si los datos ya se deshicieron con
-     * {@code rollback()}, los DELETE no encuentran nada y no pasa nada.
+     * pagos → registros de parqueo (de sus vehículos o en sus espacios) →
+     * vehículos → propietarios → espacios. Se ejecuta solo después de cada
+     * prueba; si los datos ya se deshicieron con {@code rollback()}, los DELETE
+     * no encuentran nada y no pasa nada.
      */
     @AfterEach
     protected void limpiarDatosCreados() throws SQLException {
-        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty()) {
+        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()) {
             return;
+        }
+        // Registros de parqueo de la prueba: los de sus vehículos o los hechos en sus espacios.
+        List<String> condiciones = new ArrayList<>();
+        List<Long> parametros = new ArrayList<>();
+        if (!vehiculosCreados.isEmpty()) {
+            condiciones.add("id_vehiculo IN (" + marcadores(vehiculosCreados.size()) + ")");
+            parametros.addAll(vehiculosCreados);
+        }
+        if (!espaciosCreados.isEmpty()) {
+            condiciones.add("id_espacio IN (" + marcadores(espaciosCreados.size()) + ")");
+            parametros.addAll(espaciosCreados);
         }
         try (Connection conexion = conexion()) {
             conexion.setAutoCommit(false);
             try {
-                if (!vehiculosCreados.isEmpty()) {
-                    String ids = marcadores(vehiculosCreados.size());
-                    borrar(conexion, "DELETE p FROM pago p"
-                            + " JOIN registro_parqueo r ON r.id_registro = p.id_registro"
-                            + " WHERE r.id_vehiculo IN (" + ids + ")", vehiculosCreados);
-                    borrar(conexion, "DELETE FROM registro_parqueo WHERE id_vehiculo IN (" + ids + ")",
-                            vehiculosCreados);
-                    borrar(conexion, "DELETE FROM vehiculo WHERE id_vehiculo IN (" + ids + ")",
-                            vehiculosCreados);
+                if (!condiciones.isEmpty()) {
+                    String registros = "SELECT id_registro FROM registro_parqueo WHERE "
+                            + String.join(" OR ", condiciones);
+                    borrar(conexion, "DELETE FROM pago WHERE id_registro IN (" + registros + ")",
+                            parametros);
+                    borrar(conexion, "DELETE FROM registro_parqueo WHERE "
+                            + String.join(" OR ", condiciones), parametros);
                 }
-                if (!propietariosCreados.isEmpty()) {
-                    borrar(conexion, "DELETE FROM cliente WHERE id_cliente IN ("
-                            + marcadores(propietariosCreados.size()) + ")", propietariosCreados);
-                }
+                // Los nombres de tabla y columna son fijos (no vienen de afuera).
+                borrarPorIds(conexion, "vehiculo", "id_vehiculo", vehiculosCreados);
+                borrarPorIds(conexion, "cliente", "id_cliente", propietariosCreados);
+                borrarPorIds(conexion, "espacio", "id_espacio", espaciosCreados);
                 conexion.commit();
             } catch (SQLException e) {
                 conexion.rollback();
@@ -241,6 +287,15 @@ public abstract class PruebaIntegracion {
         }
         vehiculosCreados.clear();
         propietariosCreados.clear();
+        espaciosCreados.clear();
+    }
+
+    private static void borrarPorIds(Connection conexion, String tabla, String columna, List<Long> ids)
+            throws SQLException {
+        if (!ids.isEmpty()) {
+            borrar(conexion, "DELETE FROM " + tabla + " WHERE " + columna + " IN ("
+                    + marcadores(ids.size()) + ")", ids);
+        }
     }
 
     // ---------------------------------------------------------------- auxiliares

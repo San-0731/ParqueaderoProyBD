@@ -49,9 +49,6 @@ abstract class PruebaBaseDatos extends PruebaIntegracion {
     /** Conexión de la prueba, con una transacción abierta que se deshace al final. */
     protected Connection transaccion;
 
-    /** Número del próximo espacio de prueba (piso P9, zona PRB). */
-    private int siguienteEspacio = 1;
-
     /** Una instrucción SQL que puede fallar; se usa con las afirmaciones de error. */
     @FunctionalInterface
     protected interface AccionSql {
@@ -83,16 +80,15 @@ abstract class PruebaBaseDatos extends PruebaIntegracion {
     // ------------------------------------------------------------ datos de prueba
 
     /**
-     * Crea un espacio propio de la prueba (piso {@code P9}, zona {@code PRB}),
-     * para no depender de qué espacios de la semilla V003 están libres.
+     * Crea, dentro de la transacción, un espacio propio de la prueba (piso
+     * {@code P9}, zona {@code PRB}), para no depender de qué espacios de la
+     * semilla V003 están libres.
      *
      * @param tipo una de las constantes de {@link com.parqueadero.util.TipoPorPlaca}
      * @return el id del espacio creado
      */
     protected long crearEspacio(String tipo, boolean habilitado) throws SQLException {
-        String numero = String.valueOf(siguienteEspacio++);
-        return insertar("INSERT INTO espacio (id_tipo, piso, zona, numero, habilitado)"
-                + " VALUES (?, 'P9', 'PRB', ?, ?)", idTipo(transaccion, tipo), numero, habilitado);
+        return crearEspacio(transaccion, tipo, habilitado);
     }
 
     /** Inserta un vehículo con el identificador tal como se escribe (el trigger lo normaliza). */
