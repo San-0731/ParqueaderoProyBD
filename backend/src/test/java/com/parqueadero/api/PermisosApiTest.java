@@ -39,6 +39,7 @@ class PermisosApiTest extends PruebaApi {
         "GET, /registros/1", "GET, /registros/1/liquidacion", "POST, /registros/1/salida",
         "GET, /reportes/ingresos", "GET, /reportes/ocupacion",
         "GET, /usuarios", "POST, /usuarios", "PUT, /usuarios/1", "PUT, /usuarios/1/clave",
+        "GET, /zonas", "POST, /zonas", "POST, /zonas/1/espacios", "POST, /marcas", "POST, /modelos",
     })
     void todaRutaQueNoEsPublicaExigeSesion(String metodo, String ruta) {
         String cuerpo = "GET".equals(metodo) ? null : CUERPO;
@@ -80,7 +81,7 @@ class PermisosApiTest extends PruebaApi {
     @ParameterizedTest(name = "el operador consulta {0}")
     @CsvSource({
         "/vehiculos", "/clientes", "/espacios", "/tipos-vehiculo", "/metodos-pago",
-        "/tarifas/vigente", "/marcas", "/modelos", "/registros/activos", "/registros",
+        "/tarifas/vigente", "/marcas", "/modelos", "/registros/activos", "/registros", "/zonas",
         // El tablero del operador muestra los cupos libres con este reporte.
         "/reportes/ocupacion",
     })
@@ -129,8 +130,12 @@ class PermisosApiTest extends PruebaApi {
         "OPERADOR, PUT, /usuarios/1", "OPERADOR, PUT, /usuarios/1/clave",
         "ADMINISTRADOR, GET, /usuarios", "ADMINISTRADOR, POST, /usuarios",
         "ADMINISTRADOR, PUT, /usuarios/1", "ADMINISTRADOR, PUT, /usuarios/1/clave",
+        "OPERADOR, POST, /zonas", "OPERADOR, POST, /zonas/1/espacios",
+        "OPERADOR, POST, /marcas", "OPERADOR, POST, /modelos",
+        "ADMINISTRADOR, POST, /zonas", "ADMINISTRADOR, POST, /zonas/1/espacios",
+        "ADMINISTRADOR, POST, /marcas", "ADMINISTRADOR, POST, /modelos",
     })
-    void soloElDbaAdministraUsuarios(Rol rol, String metodo, String ruta) {
+    void soloElDbaAdministraUsuariosZonasYCatalogos(Rol rol, String metodo, String ruta) {
         String cuerpo = "GET".equals(metodo) ? null : CUERPO;
 
         RespuestaHttp respuesta = enviar(metodo, ruta, cuerpo, tokenConRol(rol));

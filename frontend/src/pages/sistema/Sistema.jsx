@@ -1,9 +1,13 @@
-import { UsersRound } from 'lucide-react';
+import { Tags, UsersRound, Warehouse } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router';
 import EncabezadoPagina from '../../components/layout/EncabezadoPagina.jsx';
 
 /** Secciones de la pestaña Sistema (rutas hijas de /sistema). */
-const SECCIONES = [{ ruta: 'usuarios', texto: 'Usuarios', icono: UsersRound }];
+const SECCIONES = [
+  { ruta: 'usuarios', texto: 'Usuarios', icono: UsersRound },
+  { ruta: 'zonas', texto: 'Zonas y espacios', icono: Warehouse },
+  { ruta: 'marcas', texto: 'Marcas y modelos', icono: Tags },
+];
 
 /** Sección activa: texto azul y línea abajo, como una pestaña. */
 function clasesPestana({ isActive }) {

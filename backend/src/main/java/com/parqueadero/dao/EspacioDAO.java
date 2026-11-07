@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +63,9 @@ public final class EspacioDAO {
 
     private static final String SQL_ACTUALIZAR_HABILITADO =
             "UPDATE espacio SET habilitado = ? WHERE id_espacio = ?";
+
+    // habilitado no se envía: vale TRUE por defecto (V001).
+    private static final String SQL_INSERTAR = "INSERT INTO espacio (id_zona, numero) VALUES (?, ?)";
 
     /**
      * Todos los espacios con su estado, ordenados por piso, zona y número.
@@ -141,6 +145,25 @@ public final class EspacioDAO {
             consulta.setLong(2, idEspacio);
             // Connector/J devuelve las filas encontradas por el WHERE, no solo las modificadas.
             return consulta.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Inserta un espacio habilitado en la zona.
+     *
+     * @param numero dos dígitos, del "01" al "99"
+     * @return el id generado
+     */
+    public long insertar(Connection conexion, long idZona, String numero) throws SQLException {
+        try (PreparedStatement insercion = conexion.prepareStatement(SQL_INSERTAR,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setLong(1, idZona);
+            insercion.setString(2, numero);
+            insercion.executeUpdate();
+            try (ResultSet llaves = insercion.getGeneratedKeys()) {
+                llaves.next();
+                return llaves.getLong(1);
+            }
         }
     }
 

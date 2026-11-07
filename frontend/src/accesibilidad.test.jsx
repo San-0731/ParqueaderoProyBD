@@ -30,6 +30,7 @@ import { guardarSesion } from './api/sesionGuardada.js';
 import { iniciarSesion } from './api/autenticacion.js';
 import { ErrorApi } from './api/cliente.js';
 import { listarUsuarios } from './api/usuarios.js';
+import { listarZonas } from './api/zonas.js';
 import { listarVehiculos } from './api/vehiculos.js';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 import ProveedorSesion from './context/ProveedorSesion.jsx';
@@ -65,6 +66,13 @@ vi.mock('./api/catalogos.js', () => ({
   listarMarcas: vi.fn(),
   listarModelos: vi.fn(),
   listarMetodosPago: vi.fn(),
+  crearMarca: vi.fn(),
+  crearModelo: vi.fn(),
+}));
+vi.mock('./api/zonas.js', () => ({
+  listarZonas: vi.fn(),
+  crearZona: vi.fn(),
+  agregarEspaciosAZona: vi.fn(),
 }));
 vi.mock('./api/vehiculos.js', () => ({
   listarVehiculos: vi.fn(),
@@ -138,6 +146,26 @@ describe('accesibilidad (axe-core)', () => {
     listarVehiculos.mockResolvedValue(VEHICULOS);
     listarClientes.mockResolvedValue(CLIENTES);
     listarUsuarios.mockResolvedValue(Object.values(USUARIOS_DE_PRUEBA));
+    listarZonas.mockResolvedValue([
+      {
+        idZona: 1,
+        piso: '1',
+        letra: 'A',
+        idTipo: 3,
+        tipoVehiculo: 'Carro',
+        espacios: 8,
+        ultimoNumero: '08',
+      },
+      {
+        idZona: 9,
+        piso: '3',
+        letra: 'D',
+        idTipo: 1,
+        tipoVehiculo: 'Moto',
+        espacios: 0,
+        ultimoNumero: null,
+      },
+    ]);
   });
 
   it('tablero', async () => {
@@ -256,6 +284,34 @@ describe('accesibilidad (axe-core)', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Cambiar la contraseña de ana' }));
     await screen.findByRole('dialog', { name: 'Cambiar la contraseña de ana' });
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('sistema: zonas y espacios, con sus dos modales', async () => {
+    const usuario = renderizarEn('/sistema/zonas');
+    await screen.findByRole('table', { name: 'Lista de zonas' });
+    expect(await violaciones()).toEqual([]);
+
+    await usuario.click(screen.getByRole('button', { name: 'Nueva zona' }));
+    const nueva = screen.getByRole('dialog', { name: 'Nueva zona' });
+    await usuario.type(within(nueva).getByLabelText('Piso'), '4');
+    await usuario.type(within(nueva).getByLabelText('Letra'), 'E');
+    expect(await violaciones()).toEqual([]);
+    await usuario.keyboard('{Escape}');
+
+    await usuario.click(screen.getByRole('button', { name: 'Agregar espacios a la zona A1' }));
+    await screen.findByRole('dialog', { name: 'Agregar espacios a la zona A1' });
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('sistema: marcas y modelos, con el modal de modelo nuevo', async () => {
+    const usuario = renderizarEn('/sistema/marcas');
+    await screen.findByRole('table', { name: 'Lista de marcas' });
+    expect(await violaciones()).toEqual([]);
+
+    await usuario.click(screen.getByRole('button', { name: 'Nuevo modelo' }));
+    const modal = screen.getByRole('dialog', { name: 'Nuevo modelo' });
+    await usuario.click(within(modal).getByRole('button', { name: 'Crear modelo' }));
     expect(await violaciones()).toEqual([]);
   });
 

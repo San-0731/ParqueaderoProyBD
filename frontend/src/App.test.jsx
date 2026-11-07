@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import App from './App.jsx';
@@ -35,6 +35,13 @@ vi.mock('./api/catalogos.js', () => ({
   listarMarcas: pendiente(),
   listarModelos: pendiente(),
   listarMetodosPago: pendiente(),
+  crearMarca: pendiente(),
+  crearModelo: pendiente(),
+}));
+vi.mock('./api/zonas.js', () => ({
+  listarZonas: pendiente(),
+  crearZona: pendiente(),
+  agregarEspaciosAZona: pendiente(),
 }));
 vi.mock('./api/vehiculos.js', () => ({
   listarVehiculos: pendiente(),
@@ -266,11 +273,22 @@ describe('sesión y roles', () => {
     expect(enlaceMenu('Sistema')).not.toBeInTheDocument();
   });
 
-  it('/sistema lleva a la sección Usuarios', () => {
+  it('/sistema lleva a la sección Usuarios y las pestañas llevan a las demás', async () => {
+    const usuario = userEvent.setup();
     renderizarEn('/sistema', 'DBA');
 
     expect(titulo('Sistema')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Usuarios' })).toHaveAttribute('aria-current', 'page');
+    const secciones = screen.getByRole('navigation', { name: 'Secciones del sistema' });
+    expect(within(secciones).getByRole('link', { name: 'Usuarios' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    await usuario.click(within(secciones).getByRole('link', { name: 'Zonas y espacios' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Zonas y espacios' })).toBeInTheDocument();
+
+    await usuario.click(within(secciones).getByRole('link', { name: 'Marcas y modelos' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Marcas y modelos' })).toBeInTheDocument();
   });
 
   it('si un administrador escribe /sistema, ve que es solo para el DBA', () => {

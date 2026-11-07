@@ -6,11 +6,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Acceso a datos de la tabla {@code marca} (catálogo de solo lectura).
+ * Acceso a datos de la tabla {@code marca}. Desde la Fase 5 el DBA también
+ * puede agregar registros (pestaña Sistema).
  * Recibe la {@link Connection} y no la cierra.
  */
 public final class MarcaDAO {
@@ -29,6 +31,19 @@ public final class MarcaDAO {
             }
         }
         return marcas;
+    }
+
+    /** Inserta una marca y devuelve su id. */
+    public long insertar(Connection conexion, String nombre) throws SQLException {
+        try (PreparedStatement insercion = conexion.prepareStatement(
+                "INSERT INTO marca (nombre) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setString(1, nombre);
+            insercion.executeUpdate();
+            try (ResultSet llaves = insercion.getGeneratedKeys()) {
+                llaves.next();
+                return llaves.getLong(1);
+            }
+        }
     }
 
     private Marca mapear(ResultSet resultado) throws SQLException {

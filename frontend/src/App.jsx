@@ -10,8 +10,10 @@ import NoEncontrada from './pages/NoEncontrada.jsx';
 import Reportes from './pages/reportes/Reportes.jsx';
 import Liquidacion from './pages/salida/Liquidacion.jsx';
 import Salida from './pages/salida/Salida.jsx';
+import MarcasModelos from './pages/sistema/marcas/MarcasModelos.jsx';
 import Sistema from './pages/sistema/Sistema.jsx';
 import Usuarios from './pages/sistema/usuarios/Usuarios.jsx';
+import Zonas from './pages/sistema/zonas/Zonas.jsx';
 import Tablero from './pages/tablero/Tablero.jsx';
 import Vehiculos from './pages/vehiculos/Vehiculos.jsx';
 
@@ -52,6 +54,8 @@ function App() {
           >
             <Route index element={<Navigate to="usuarios" replace />} />
             <Route path="usuarios" element={<Usuarios />} />
+            <Route path="zonas" element={<Zonas />} />
+            <Route path="marcas" element={<MarcasModelos />} />
           </Route>
           <Route path="*" element={<NoEncontrada />} />
         </Route>
