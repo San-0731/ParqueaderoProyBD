@@ -179,6 +179,28 @@ describe('Liquidacion (cobro de la salida)', () => {
     expect(screen.getAllByText(pesos(40000)).length).toBeGreaterThan(1);
   });
 
+  it('si falla la consulta del valor fresco, no abre el modal, muestra el error y recarga la cuenta', async () => {
+    consultarLiquidacion
+      .mockResolvedValueOnce(LIQUIDACION_28)
+      .mockRejectedValueOnce(
+        new ErrorApi(0, 'SIN_CONEXION', 'No se pudo conectar con el servidor.'),
+      );
+    const usuario = renderizar();
+    await esperarCuenta();
+
+    await usuario.click(radio('Nequi'));
+    await usuario.type(campoReferencia(), 'NEQ-1');
+    await usuario.click(botonPagar());
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('No se pudo conectar con el servidor.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(registrarSalida).not.toHaveBeenCalled();
+    // Lo escrito se conserva y la cuenta se vuelve a pedir.
+    expect(campoReferencia()).toHaveValue('NEQ-1');
+    await waitFor(() => expect(obtenerRegistro).toHaveBeenCalledTimes(2));
+  });
+
   it('mientras se envía, los botones del modal quedan deshabilitados y Escape no lo cierra', async () => {
     registrarSalida.mockReturnValue(new Promise(() => {}));
     const usuario = renderizar();
