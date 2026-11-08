@@ -12,6 +12,21 @@ Proyecto académico de la materia **Bases de Datos**.
 
 Las capturas de cada pantalla están en la sección [Pantallas](#pantallas).
 
+## Demo en línea
+
+| Pieza | URL |
+|---|---|
+| Aplicación | `https://<URL_VERCEL>` |
+| API | `https://<URL_RENDER>/api` (salud: `/api/salud`) |
+
+Frontend en Vercel, backend en Render (Docker) y MySQL en Aiven, todo en planes gratuitos.
+Cómo está desplegado, sus variables y cómo actualizarlo:
+[documentacion/despliegue.md](documentacion/despliegue.md).
+
+> **Arranque en frío:** el backend gratuito se apaga tras unos minutos sin uso. La primera
+> visita puede tardar cerca de un minuto: la app muestra "Conectando con el servidor…" y luego
+> funciona normalmente.
+
 ## Tecnologías
 
 | Capa          | Tecnología                                                             |
@@ -204,8 +219,8 @@ automáticamente (ver `.vscode/extensions.json`).
 ├── database/
 │   ├── migrations/     # Migraciones SQL versionadas (V{n}__descripcion.sql)
 │   ├── pruebas/        # Scripts SQL y de terminal para revisar las reglas de la base
-│   └── scripts/        # recrear-bd-pruebas.sh: crea la base parqueadero_test
-├── backend/            # Proyecto Maven (config, model, dao, service, handler, util)
+│   └── scripts/        # recrear-bd-pruebas.sh (base parqueadero_test), cargar-bd-produccion.sh (Aiven)...
+├── backend/            # Proyecto Maven (config, model, dao, service, handler, util) y su Dockerfile
 ├── frontend/           # Proyecto React + Vite + Tailwind CSS
 │   └── src/
 │       ├── api/        # Llamadas al backend (un archivo por recurso; único lugar con fetch)
@@ -214,7 +229,7 @@ automáticamente (ver `.vscode/extensions.json`).
 │       ├── hooks/      # useConsulta (consultas a la API) y useIntervalo (actualizar solo)
 │       ├── pages/      # Una carpeta por pantalla, con sus piezas y sus funciones puras
 │       └── utils/      # Formato de pesos y fechas, placas, tipos de vehículo, rangos de fechas
-├── documentacion/      # Guías (Docker, diseño del frontend, pruebas y CI, pruebas de la base) y capturas
+├── documentacion/      # Guías (Docker, diseño del frontend, pruebas y CI, pruebas de la base, despliegue) y capturas
 │   └── pruebas/        # Plan de pruebas manual, casos de prueba y matriz de trazabilidad
 ├── .github/            # Integración continua (workflows/ci.yml) y plantilla de bugs
 ├── .vscode/            # Extensiones recomendadas para el equipo
