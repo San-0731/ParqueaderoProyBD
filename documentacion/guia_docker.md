@@ -354,6 +354,26 @@ vacío** (la primera vez). Para aplicarla tienes tres caminos:
 - **Reiniciar la base:** `docker compose down -v` y `docker compose up -d`.
   **Se pierden los datos** y se ejecutan todas las migraciones desde cero.
 
+### 7.7.1 Permisos del usuario de la aplicación (rol de MySQL, V009)
+
+Docker crea `DB_USER` con **todos** los permisos sobre la base. Desde la V009 el backend
+trabaja con un rol de **mínimo privilegio**, `rol_aplicacion`: puede leer, crear y modificar
+lo que usa la aplicación, pero no borrar (salvo sesiones), cambiar ni borrar tablas, ni tocar
+la auditoría. Para dejarlo así (después de aplicar la V009, o en un volumen nuevo):
+
+```bash
+./database/scripts/aplicar-permisos.sh      # quita el ALL y deja solo el rol
+./database/scripts/verificar-permisos.sh    # comprueba lo permitido y lo prohibido
+```
+
+- Desde ahí, con `parqueadero_user`, por ejemplo `DELETE FROM pago;` responde
+  `ERROR 1142: DELETE command denied`. La base se protege sola, no solo el código Java.
+- La limpieza manual de datos en la base de desarrollo se hace como **root**.
+- La base de pruebas (`parqueadero_test`) conserva `ALL`: las pruebas borran sus datos con
+  `DELETE`. Por eso el script no se usa con ella.
+- Para diagnosticar un problema, `./database/scripts/aplicar-permisos.sh --revertir` devuelve
+  el `ALL`.
+
 ### 7.8 Cambié la contraseña o el usuario en el `.env` y ahora no conecta
 
 Por la misma razón que la pregunta anterior: `MYSQL_USER`, `MYSQL_PASSWORD`,
@@ -421,7 +441,14 @@ docker compose stop               # apagar MySQL (sin perder datos)
 docker compose logs -f mysql      # ver qué está pasando
 docker compose exec mysql mysql -u parqueadero_user -p parqueadero   # consola SQL
 
-# Reiniciar la base desde cero (⚠️ borra todos los datos)
+# Aplicar una migración nueva a la base que ya existe (hace un respaldo antes)
+./database/scripts/aplicar-migracion.sh database/migrations/V00N__descripcion.sql
+
+# Dejar al usuario de la aplicación solo con su rol y comprobarlo (V009)
+./database/scripts/aplicar-permisos.sh
+./database/scripts/verificar-permisos.sh
+
+# Reiniciar la base desde cero (⚠️ borra todos los datos; después, aplicar-permisos.sh)
 docker compose down -v
 docker compose up -d
 ```
