@@ -108,9 +108,9 @@ describe('Entrada', () => {
 
     const opciones = await within(paso2()).findAllByRole('radio');
     expect(opciones.map((opcion) => opcion.getAttribute('aria-label'))).toEqual([
-      'A-01, piso 1',
-      'A-03, piso 1',
-      'B-01, piso 2',
+      'A1-01, piso 1',
+      'A1-03, piso 1',
+      'B2-01, piso 2',
     ]);
     expect(
       within(paso2()).getByRole('group', { name: 'Espacios libres para Carro' }),
@@ -150,7 +150,7 @@ describe('Entrada', () => {
 
     await buscar(usuario, 'KLM234');
 
-    expect(await within(paso2()).findByRole('radio', { name: 'A-03, piso 1' })).toBeChecked();
+    expect(await within(paso2()).findByRole('radio', { name: 'A1-03, piso 1' })).toBeChecked();
     expect(botonConfirmar()).toBeEnabled();
   });
 
@@ -160,7 +160,7 @@ describe('Entrada', () => {
     await buscar(usuario, 'ABC12D');
 
     expect(await within(paso2()).findByText(/es para Carro y este vehículo es Moto/)).toBeVisible();
-    expect(within(paso2()).getByRole('radio', { name: 'M-01, piso 1' })).not.toBeChecked();
+    expect(within(paso2()).getByRole('radio', { name: 'M1-01, piso 1' })).not.toBeChecked();
     expect(botonConfirmar()).toBeDisabled();
   });
 
@@ -171,7 +171,7 @@ describe('Entrada', () => {
     await buscar(usuario, 'KLM234');
 
     const aviso = await screen.findByText(
-      /está en el espacio A-02, piso 1 desde las 3:45\sp\.\sm\.$/,
+      /está en el espacio A1-02, piso 1 desde las 3:45\sp\.\sm\.$/,
     );
     expect(aviso).toBeVisible();
     expect(screen.getByRole('link', { name: 'Registrar salida' })).toHaveAttribute(
@@ -198,12 +198,14 @@ describe('Entrada', () => {
     const usuario = await renderizar('/entrada?idEspacio=1');
     await buscar(usuario, 'KLM234');
 
-    await usuario.click(await within(paso2()).findByRole('radio', { name: 'A-03, piso 1' }));
+    await usuario.click(await within(paso2()).findByRole('radio', { name: 'A1-03, piso 1' }));
     await usuario.click(botonConfirmar());
 
     expect(registrarEntrada).toHaveBeenCalledWith({ identificador: 'KLM234', idEspacio: 3 });
     expect(
-      await screen.findByText(/Entrada registrada: KLM 234 en A-03, piso 1, a las 3:45\sp\.\sm\.$/),
+      await screen.findByText(
+        /Entrada registrada: KLM 234 en A1-03, piso 1, a las 3:45\sp\.\sm\.$/,
+      ),
     ).toBeVisible();
     expect(campoPlaca()).toHaveValue('');
     expect(campoPlaca()).toHaveFocus();
@@ -219,7 +221,7 @@ describe('Entrada', () => {
     );
     const usuario = await renderizar('/entrada?idEspacio=3');
     await buscar(usuario, 'KLM234');
-    await within(paso2()).findByRole('radio', { name: 'A-03, piso 1' });
+    await within(paso2()).findByRole('radio', { name: 'A1-03, piso 1' });
 
     await usuario.click(botonConfirmar());
 
@@ -366,7 +368,7 @@ describe('Entrada', () => {
 
     expect(await screen.findByText('Vehículo KLM 999 registrado.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Cambiar vehículo' })).toBeInTheDocument();
-    expect(within(paso2()).getByRole('radio', { name: 'A-03, piso 1' })).toBeChecked();
+    expect(within(paso2()).getByRole('radio', { name: 'A1-03, piso 1' })).toBeChecked();
     expect(botonConfirmar()).toBeEnabled();
   });
 });

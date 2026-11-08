@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.model.Rol;
+import com.parqueadero.util.Contrasenas;
 import com.parqueadero.util.TipoPorPlaca;
+import com.parqueadero.util.Tokens;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -17,6 +20,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -41,7 +45,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       ({@link #identificadorUnico(String)}, {@link #documentoUnico()});</li>
  *   <li>crear datos mínimos ({@link #crearPropietario(Connection)},
  *       {@link #crearVehiculo(Connection, String)},
- *       {@link #crearEspacio(Connection, String, boolean)});</li>
+ *       {@link #crearEspacio(Connection, String, boolean)},
+ *       {@link #crearUsuario(Connection, Rol)});</li>
  *   <li>borrar lo creado al terminar cada prueba ({@link #limpiarDatosCreados()}).</li>
  * </ul>
  *
@@ -67,13 +72,48 @@ public abstract class PruebaIntegracion {
     private final List<Long> vehiculosCreados = new ArrayList<>();
     private final List<Long> propietariosCreados = new ArrayList<>();
     private final List<Long> espaciosCreados = new ArrayList<>();
+    private final List<Long> usuariosCreados = new ArrayList<>();
+    private final List<Long> zonasCreadas = new ArrayList<>();
+    private final List<Long> modelosCreados = new ArrayList<>();
+    private final List<Long> marcasCreadas = new ArrayList<>();
 
-    /** Número del próximo espacio de prueba; empieza en un valor al azar para no chocar con otras ejecuciones. */
+    /**
+     * Iteraciones de PBKDF2 de los usuarios de prueba: pocas, para que crear
+     * uno no tarde medio segundo. La verificación lee las iteraciones del hash,
+     * así que el inicio de sesión funciona igual que con un usuario real.
+     */
+    private static final int ITERACIONES_PRUEBA = 1_000;
+
+    /**
+     * Piso de las zonas de prueba. La semilla solo usa los pisos 1 y 2, así que
+     * las pruebas nunca tocan los espacios de V002.
+     */
+    public static final String PISO_PRUEBAS = "99";
+
+    /**
+     * Letra de la zona de prueba de cada tipo de vehículo, todas en el piso
+     * {@link #PISO_PRUEBAS}. Una zona admite un solo tipo (V006), por eso hay
+     * una por tipo: C99 carros, M99 motos, T99 camiones y B99 bicicletas.
+     */
+    public static final Map<String, String> LETRA_ZONA_PRUEBAS = Map.of(
+            TipoPorPlaca.CARRO, "C",
+            TipoPorPlaca.MOTO, "M",
+            TipoPorPlaca.CAMION, "T",
+            TipoPorPlaca.BICICLETA, "B");
+
+    /** Máximo de espacios por zona: los números van del 01 al 99 (V006). */
+    private static final int MAX_ESPACIOS_POR_ZONA = 99;
+
+    /** Contador para elegir el número del próximo espacio de prueba; empieza al azar. */
     private static final AtomicInteger SIGUIENTE_ESPACIO =
-            new AtomicInteger(ThreadLocalRandom.current().nextInt(1_000_000));
+            new AtomicInteger(ThreadLocalRandom.current().nextInt(MAX_ESPACIOS_POR_ZONA));
 
     /** Vehículo creado para una prueba, con su propietario. */
     public record VehiculoPrueba(long idVehiculo, String identificador, long idTipo, long idCliente) {
+    }
+
+    /** Usuario creado para una prueba, con su contraseña en claro (solo existe aquí). */
+    public record UsuarioPrueba(long idUsuario, String nombreUsuario, String clave, Rol rol) {
     }
 
     /**
@@ -203,25 +243,59 @@ public abstract class PruebaIntegracion {
     }
 
     /**
-     * Crea un espacio propio de la prueba (piso {@code P9}, zona {@code PRB},
-     * número único), para no depender de qué espacios de la semilla V003
-     * están libres. Se borra al final de la prueba.
+     * Crea un usuario activo de la aplicación con el rol pedido, un nombre que
+     * no existe ({@code prueba_} y 10 letras o números) y una contraseña
+     * aleatoria. Se borra al final de la prueba, con sus sesiones.
+     */
+    protected UsuarioPrueba crearUsuario(Connection conexion, Rol rol) throws SQLException {
+        String nombre;
+        do {
+            nombre = "prueba_" + minusculasYDigitos(10);
+        } while (existe("SELECT 1 FROM usuario WHERE nombre_usuario = ?", nombre)
+                || !GENERADOS.add(nombre));
+        String clave = Tokens.generar();
+        String sql = "INSERT INTO usuario (nombre_usuario, nombre_completo, clave_hash, id_rol)"
+                + " VALUES (?, 'Usuario de prueba', ?, (SELECT id_rol FROM rol WHERE nombre = ?))";
+        try (PreparedStatement insercion = conexion.prepareStatement(sql,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setString(1, nombre);
+            insercion.setString(2, Contrasenas.hash(clave, ITERACIONES_PRUEBA));
+            insercion.setString(3, rol.name());
+            insercion.executeUpdate();
+            long idUsuario = llaveGenerada(insercion);
+            usuariosCreados.add(idUsuario);
+            return new UsuarioPrueba(idUsuario, nombre, clave, rol);
+        }
+    }
+
+    /**
+     * Crea un espacio propio de la prueba en la zona de prueba de su tipo (piso
+     * {@link #PISO_PRUEBAS}; por ejemplo C99 para carros), con un número libre
+     * del 01 al 99. Así la prueba no depende de qué espacios de la semilla V003
+     * están libres. El espacio se borra al final de la prueba; la zona se queda,
+     * porque la comparten todas las pruebas.
      *
      * @param tipo una de las constantes de {@link TipoPorPlaca}
      * @return el id del espacio creado
      */
     protected long crearEspacio(Connection conexion, String tipo, boolean habilitado)
             throws SQLException {
+        long idZona = zonaDePrueba(conexion, tipo);
         String numero;
+        int intentos = 0;
         do {
-            numero = "E" + SIGUIENTE_ESPACIO.getAndIncrement();
-        } while (existe("SELECT 1 FROM espacio WHERE piso = 'P9' AND zona = 'PRB' AND numero = ?",
-                numero));
-        String sql = "INSERT INTO espacio (id_tipo, piso, zona, numero, habilitado)"
-                + " VALUES (?, 'P9', 'PRB', ?, ?)";
+            if (++intentos > MAX_ESPACIOS_POR_ZONA) {
+                throw new IllegalStateException("La zona de prueba de " + tipo + " ya tiene "
+                        + MAX_ESPACIOS_POR_ZONA + " espacios. Recrea la base de pruebas:"
+                        + " ./database/scripts/recrear-bd-pruebas.sh");
+            }
+            int siguiente = Math.floorMod(SIGUIENTE_ESPACIO.getAndIncrement(), MAX_ESPACIOS_POR_ZONA);
+            numero = String.format("%02d", siguiente + 1);
+        } while (existe("SELECT 1 FROM espacio WHERE id_zona = ? AND numero = ?", idZona, numero));
+        String sql = "INSERT INTO espacio (id_zona, numero, habilitado) VALUES (?, ?, ?)";
         try (PreparedStatement insercion = conexion.prepareStatement(sql,
                 Statement.RETURN_GENERATED_KEYS)) {
-            insercion.setLong(1, idTipo(conexion, tipo));
+            insercion.setLong(1, idZona);
             insercion.setString(2, numero);
             insercion.setBoolean(3, habilitado);
             insercion.executeUpdate();
@@ -236,6 +310,31 @@ public abstract class PruebaIntegracion {
         vehiculosCreados.add(idVehiculo);
     }
 
+    /** Anota un espacio creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
+    protected void registrarEspacioCreado(long idEspacio) {
+        espaciosCreados.add(idEspacio);
+    }
+
+    /** Anota una zona creada por la API para borrarla al final (después de sus espacios). */
+    protected void registrarZonaCreada(long idZona) {
+        zonasCreadas.add(idZona);
+    }
+
+    /** Anota una marca creada por la API para borrarla al final (después de sus modelos). */
+    protected void registrarMarcaCreada(long idMarca) {
+        marcasCreadas.add(idMarca);
+    }
+
+    /** Anota un modelo creado por la API para borrarlo al final. */
+    protected void registrarModeloCreado(long idModelo) {
+        modelosCreados.add(idModelo);
+    }
+
+    /** Anota un usuario creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
+    protected void registrarUsuarioCreado(long idUsuario) {
+        usuariosCreados.add(idUsuario);
+    }
+
     /** Anota un propietario creado por otra vía (por ejemplo, por la API) para borrarlo al final. */
     protected void registrarPropietarioCreado(long idCliente) {
         propietariosCreados.add(idCliente);
@@ -244,13 +343,16 @@ public abstract class PruebaIntegracion {
     /**
      * Borra lo que creó la prueba, en orden inverso a las llaves foráneas:
      * pagos → registros de parqueo (de sus vehículos o en sus espacios) →
-     * vehículos → propietarios → espacios. Se ejecuta solo después de cada
+     * vehículos → propietarios → espacios → zonas → modelos → marcas →
+     * auditoría → sesiones → usuarios. Se ejecuta solo después de cada
      * prueba; si los datos ya se deshicieron con {@code rollback()}, los DELETE
      * no encuentran nada y no pasa nada.
      */
     @AfterEach
     protected void limpiarDatosCreados() throws SQLException {
-        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()) {
+        if (vehiculosCreados.isEmpty() && propietariosCreados.isEmpty() && espaciosCreados.isEmpty()
+                && usuariosCreados.isEmpty() && zonasCreadas.isEmpty() && modelosCreados.isEmpty()
+                && marcasCreadas.isEmpty()) {
             return;
         }
         // Registros de parqueo de la prueba: los de sus vehículos o los hechos en sus espacios.
@@ -279,6 +381,14 @@ public abstract class PruebaIntegracion {
                 borrarPorIds(conexion, "vehiculo", "id_vehiculo", vehiculosCreados);
                 borrarPorIds(conexion, "cliente", "id_cliente", propietariosCreados);
                 borrarPorIds(conexion, "espacio", "id_espacio", espaciosCreados);
+                borrarPorIds(conexion, "zona", "id_zona", zonasCreadas);
+                borrarPorIds(conexion, "modelo", "id_modelo", modelosCreados);
+                borrarPorIds(conexion, "marca", "id_marca", marcasCreadas);
+                // Lo que hicieron los usuarios de prueba quedó en la auditoría (V008), que
+                // apunta al usuario: se borra antes que él.
+                borrarPorIds(conexion, "auditoria", "id_usuario", usuariosCreados);
+                borrarPorIds(conexion, "sesion", "id_usuario", usuariosCreados);
+                borrarPorIds(conexion, "usuario", "id_usuario", usuariosCreados);
                 conexion.commit();
             } catch (SQLException e) {
                 conexion.rollback();
@@ -288,6 +398,10 @@ public abstract class PruebaIntegracion {
         vehiculosCreados.clear();
         propietariosCreados.clear();
         espaciosCreados.clear();
+        usuariosCreados.clear();
+        zonasCreadas.clear();
+        modelosCreados.clear();
+        marcasCreadas.clear();
     }
 
     private static void borrarPorIds(Connection conexion, String tabla, String columna, List<Long> ids)
@@ -300,11 +414,44 @@ public abstract class PruebaIntegracion {
 
     // ---------------------------------------------------------------- auxiliares
 
-    /** Consulta si la búsqueda con un parámetro devuelve al menos una fila. */
-    private static boolean existe(String sql, String valor) {
+    /**
+     * Id de la zona de prueba del tipo pedido. Si todavía no existe, la crea con
+     * la misma conexión (si esa conexión tiene una transacción que luego se
+     * deshace, la zona se vuelve a crear la próxima vez).
+     */
+    private static long zonaDePrueba(Connection conexion, String tipo) throws SQLException {
+        String letra = LETRA_ZONA_PRUEBAS.get(tipo);
+        if (letra == null) {
+            throw new IllegalArgumentException("No hay zona de prueba para el tipo " + tipo);
+        }
+        String buscar = "SELECT id_zona FROM zona WHERE piso = ? AND letra = ?";
+        try (PreparedStatement consulta = conexion.prepareStatement(buscar)) {
+            consulta.setString(1, PISO_PRUEBAS);
+            consulta.setString(2, letra);
+            try (ResultSet fila = consulta.executeQuery()) {
+                if (fila.next()) {
+                    return fila.getLong(1);
+                }
+            }
+        }
+        String crear = "INSERT INTO zona (piso, letra, id_tipo) VALUES (?, ?, ?)";
+        try (PreparedStatement insercion = conexion.prepareStatement(crear,
+                Statement.RETURN_GENERATED_KEYS)) {
+            insercion.setString(1, PISO_PRUEBAS);
+            insercion.setString(2, letra);
+            insercion.setLong(3, idTipo(conexion, tipo));
+            insercion.executeUpdate();
+            return llaveGenerada(insercion);
+        }
+    }
+
+    /** Consulta si la búsqueda (con sus parámetros) devuelve al menos una fila. */
+    private static boolean existe(String sql, Object... valores) {
         try (Connection conexion = conexion();
              PreparedStatement consulta = conexion.prepareStatement(sql)) {
-            consulta.setString(1, valor);
+            for (int i = 0; i < valores.length; i++) {
+                consulta.setObject(i + 1, valores[i]);
+            }
             try (ResultSet fila = consulta.executeQuery()) {
                 return fila.next();
             }
@@ -348,6 +495,15 @@ public abstract class PruebaIntegracion {
         StringBuilder texto = new StringBuilder(cantidad);
         for (int i = 0; i < cantidad; i++) {
             texto.append(ThreadLocalRandom.current().nextInt(10));
+        }
+        return texto.toString();
+    }
+
+    private static String minusculasYDigitos(int cantidad) {
+        String caracteres = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder texto = new StringBuilder(cantidad);
+        for (int i = 0; i < cantidad; i++) {
+            texto.append(caracteres.charAt(ThreadLocalRandom.current().nextInt(caracteres.length())));
         }
         return texto.toString();
     }

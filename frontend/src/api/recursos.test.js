@@ -1,6 +1,10 @@
+import { consultarAuditoria } from './auditoria.js';
+import { cerrarSesion, consultarUsuarioActual, iniciarSesion } from './autenticacion.js';
 import * as cliente from './cliente.js';
 import { consultarIngresos, consultarOcupacion } from './reportes.js';
 import {
+  crearMarca,
+  crearModelo,
   listarMarcas,
   listarMetodosPago,
   listarModelos,
@@ -18,6 +22,13 @@ import {
   registrarSalida,
 } from './registros.js';
 import { consultarSalud } from './salud.js';
+import { agregarEspaciosAZona, crearZona, listarZonas } from './zonas.js';
+import {
+  actualizarUsuario,
+  cambiarClaveUsuario,
+  crearUsuario,
+  listarUsuarios,
+} from './usuarios.js';
 import {
   actualizarVehiculo,
   crearVehiculo,
@@ -35,6 +46,61 @@ const propietario = { documento: '1000000001', nombres: 'Ana', apellidos: 'Pére
 // [función, cómo se llama, método del cliente, argumentos esperados]
 const casos = [
   ['consultarSalud', () => consultarSalud(), 'get', ['/salud']],
+
+  [
+    'iniciarSesion',
+    () => iniciarSesion('dba', 'clave-123'),
+    'post',
+    ['/auth/login', { nombreUsuario: 'dba', clave: 'clave-123' }],
+  ],
+  ['cerrarSesion', () => cerrarSesion(), 'post', ['/auth/logout']],
+  ['consultarUsuarioActual', () => consultarUsuarioActual(), 'get', ['/auth/yo']],
+
+  ['listarUsuarios', () => listarUsuarios(), 'get', ['/usuarios']],
+  ['listarZonas', () => listarZonas(), 'get', ['/zonas']],
+  [
+    'consultarAuditoria',
+    () => consultarAuditoria({ desde: '2026-11-01', tabla: 'pago' }),
+    'get',
+    ['/auditoria', { desde: '2026-11-01', hasta: undefined, tabla: 'pago' }],
+  ],
+  [
+    'crearZona',
+    () => crearZona({ piso: '3', letra: 'D', idTipo: 1 }),
+    'post',
+    ['/zonas', { piso: '3', letra: 'D', idTipo: 1 }],
+  ],
+  [
+    'agregarEspaciosAZona',
+    () => agregarEspaciosAZona(5, 4),
+    'post',
+    ['/zonas/5/espacios', { cantidad: 4 }],
+  ],
+  ['crearMarca', () => crearMarca('Kia'), 'post', ['/marcas', { nombre: 'Kia' }]],
+  [
+    'crearModelo',
+    () => crearModelo(3, 'Picanto'),
+    'post',
+    ['/modelos', { idMarca: 3, nombre: 'Picanto' }],
+  ],
+  [
+    'crearUsuario',
+    () => crearUsuario({ nombreUsuario: 'ana', rol: 'OPERADOR' }),
+    'post',
+    ['/usuarios', { nombreUsuario: 'ana', rol: 'OPERADOR' }],
+  ],
+  [
+    'actualizarUsuario',
+    () => actualizarUsuario(7, { rol: 'DBA' }),
+    'put',
+    ['/usuarios/7', { rol: 'DBA' }],
+  ],
+  [
+    'cambiarClaveUsuario',
+    () => cambiarClaveUsuario(7, 'clave-nueva'),
+    'put',
+    ['/usuarios/7/clave', { clave: 'clave-nueva' }],
+  ],
 
   [
     'listarVehiculos',

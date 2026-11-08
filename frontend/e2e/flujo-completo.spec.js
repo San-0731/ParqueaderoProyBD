@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+// test y expect de ./sesion.js: cada página empieza con la sesión del DBA abierta.
+import { expect, test } from './sesion.js';
 import { formatearPesos } from '../src/utils/formato.js';
 import { formatearPlaca } from '../src/utils/identificador.js';
 import {
@@ -48,7 +49,7 @@ test('carro y propietario nuevos: entrada, cobro con Nequi, recibo, historial y 
         .getByRole('group', { name: 'Espacios libres para Carro' })
         .getByRole('radio')
         .first();
-      const nombreEspacio = await espacio.getAttribute('aria-label'); // "A-01, piso 1"
+      const nombreEspacio = await espacio.getAttribute('aria-label'); // "A1-01, piso 1"
       codigoEspacio = nombreEspacio.split(',')[0];
       await espacio.press('Space');
       await expect(espacio).toBeChecked();

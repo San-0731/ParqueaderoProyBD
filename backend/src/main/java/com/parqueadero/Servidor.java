@@ -2,6 +2,7 @@ package com.parqueadero;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.dao.AuditoriaDAO;
 import com.parqueadero.dao.ClienteDAO;
 import com.parqueadero.dao.EspacioDAO;
 import com.parqueadero.dao.MarcaDAO;
@@ -10,10 +11,15 @@ import com.parqueadero.dao.ModeloDAO;
 import com.parqueadero.dao.PagoDAO;
 import com.parqueadero.dao.RegistroDAO;
 import com.parqueadero.dao.ReporteDAO;
+import com.parqueadero.dao.SesionDAO;
 import com.parqueadero.dao.TarifaDAO;
 import com.parqueadero.dao.TipoVehiculoDAO;
+import com.parqueadero.dao.UsuarioDAO;
 import com.parqueadero.dao.VehiculoDAO;
+import com.parqueadero.dao.ZonaDAO;
 import com.parqueadero.handler.ApiHandler;
+import com.parqueadero.handler.AuditoriaHandler;
+import com.parqueadero.handler.AutenticacionHandler;
 import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
 import com.parqueadero.handler.EspacioHandler;
@@ -21,14 +27,21 @@ import com.parqueadero.handler.RegistroHandler;
 import com.parqueadero.handler.ReporteHandler;
 import com.parqueadero.handler.SalidaHandler;
 import com.parqueadero.handler.SaludHandler;
+import com.parqueadero.handler.UsuarioHandler;
 import com.parqueadero.handler.VehiculoHandler;
+import com.parqueadero.handler.ZonaHandler;
+import com.parqueadero.model.Rol;
+import com.parqueadero.service.AuditoriaService;
+import com.parqueadero.service.AutenticacionService;
 import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
 import com.parqueadero.service.EspacioService;
 import com.parqueadero.service.RegistroService;
 import com.parqueadero.service.ReporteService;
 import com.parqueadero.service.SalidaService;
+import com.parqueadero.service.UsuarioService;
 import com.parqueadero.service.VehiculoService;
+import com.parqueadero.service.ZonaService;
 import com.parqueadero.util.Router;
 import com.sun.net.httpserver.HttpServer;
 
@@ -110,9 +123,13 @@ public final class Servidor {
 
     /**
      * Crea los handlers (con sus servicios y DAO) y registra todas las rutas de
-     * la API.
+     * la API con el rol que exige cada una. Es package-private para que una
+     * prueba compruebe que solo las rutas previstas quedaron públicas.
      */
-    private static Router registrarRutas(ConexionBD conexionBD) {
+    static Router registrarRutas(ConexionBD conexionBD) {
+        AutenticacionService autenticacionService =
+                new AutenticacionService(conexionBD, new UsuarioDAO(), new SesionDAO());
+        AutenticacionHandler autenticacion = new AutenticacionHandler(autenticacionService);
         SaludHandler salud = new SaludHandler(conexionBD);
         VehiculoHandler vehiculos = new VehiculoHandler(
                 new VehiculoService(conexionBD, new VehiculoDAO(), new TipoVehiculoDAO()));
@@ -130,40 +147,80 @@ public final class Servidor {
                 new TarifaDAO(), new MetodoPagoDAO(), new PagoDAO(), registroService));
         ReporteHandler reportes = new ReporteHandler(
                 new ReporteService(conexionBD, new ReporteDAO()));
+        ZonaHandler zonas = new ZonaHandler(
+                new ZonaService(conexionBD, new ZonaDAO(), new EspacioDAO()));
+        AuditoriaHandler auditoria = new AuditoriaHandler(
+                new AuditoriaService(conexionBD, new AuditoriaDAO()));
+        UsuarioHandler usuarios = new UsuarioHandler(
+                new UsuarioService(conexionBD, new UsuarioDAO(), new SesionDAO()));
 
-        return new Router()
+        // Permisos (sección 4 de la Fase 5). Cada ruta declara el rol mínimo que
+        // exige; los roles superiores también pasan (DBA ⊇ ADMINISTRADOR ⊇ OPERADOR).
+        // Solo /salud y /auth/login son públicas. El Router usa el servicio de
+        // autenticación para convertir el token en el usuario.
+        Rol operador = Rol.OPERADOR;
+        Rol administrador = Rol.ADMINISTRADOR;
+        Rol dba = Rol.DBA;
+        return new Router(autenticacionService::usuarioDeToken)
                 .get("/api/salud", salud::consultar)
 
-                .get("/api/vehiculos", vehiculos::listar)
-                .get("/api/vehiculos/{id}", vehiculos::buscarPorId)
-                .post("/api/vehiculos", vehiculos::crear)
-                .put("/api/vehiculos/{id}", vehiculos::actualizar)
+                .post("/api/auth/login", autenticacion::iniciarSesion)
+                .post("/api/auth/logout", operador, autenticacion::cerrarSesion)
+                .get("/api/auth/yo", operador, autenticacion::yo)
 
-                .get("/api/tipos-vehiculo", catalogos::tiposVehiculo)
-                .get("/api/metodos-pago", catalogos::metodosPago)
-                .get("/api/tarifas/vigente", catalogos::tarifasVigentes)
-                .get("/api/marcas", catalogos::marcas)
-                .get("/api/modelos", catalogos::modelos)
+                // El operador registra vehículos y propietarios nuevos; solo el
+                // administrador los edita.
+                .get("/api/vehiculos", operador, vehiculos::listar)
+                .get("/api/vehiculos/{id}", operador, vehiculos::buscarPorId)
+                .post("/api/vehiculos", operador, vehiculos::crear)
+                .put("/api/vehiculos/{id}", administrador, vehiculos::actualizar)
 
-                .get("/api/clientes", clientes::listar)
-                .get("/api/clientes/{id}", clientes::buscarPorId)
-                .post("/api/clientes", clientes::crear)
-                .put("/api/clientes/{id}", clientes::actualizar)
+                .get("/api/tipos-vehiculo", operador, catalogos::tiposVehiculo)
+                .get("/api/metodos-pago", operador, catalogos::metodosPago)
+                .get("/api/tarifas/vigente", operador, catalogos::tarifasVigentes)
+                .get("/api/marcas", operador, catalogos::marcas)
+                .get("/api/modelos", operador, catalogos::modelos)
+                // Agregar marcas y modelos es del DBA (pestaña Sistema).
+                .post("/api/marcas", dba, catalogos::crearMarca)
+                .post("/api/modelos", dba, catalogos::crearModelo)
 
-                .get("/api/espacios", espacios::listar)
-                .get("/api/espacios/{id}", espacios::buscarPorId)
-                .patch("/api/espacios/{id}/habilitado", espacios::cambiarHabilitado)
+                .get("/api/clientes", operador, clientes::listar)
+                .get("/api/clientes/{id}", operador, clientes::buscarPorId)
+                .post("/api/clientes", operador, clientes::crear)
+                .put("/api/clientes/{id}", administrador, clientes::actualizar)
+
+                // El operador ve los espacios; habilitarlos o deshabilitarlos es del administrador.
+                .get("/api/espacios", operador, espacios::listar)
+                .get("/api/espacios/{id}", operador, espacios::buscarPorId)
+                .patch("/api/espacios/{id}/habilitado", administrador, espacios::cambiarHabilitado)
+
+                // Zonas: todos las consultan; crear zonas (y con ellas pisos nuevos) y
+                // agregarles espacios es del DBA.
+                .get("/api/zonas", operador, zonas::listar)
+                .post("/api/zonas", dba, zonas::crear)
+                .post("/api/zonas/{id}/espacios", dba, zonas::agregarEspacios)
 
                 // /registros/activos tiene prioridad sobre /registros/{id}: el
                 // Router prefiere el segmento literal sobre el parámetro.
-                .post("/api/registros/entrada", registros::registrarEntrada)
-                .get("/api/registros/activos", registros::activos)
-                .get("/api/registros", registros::historial)
-                .get("/api/registros/{id}", registros::buscarPorId)
-                .get("/api/registros/{id}/liquidacion", salidas::liquidar)
-                .post("/api/registros/{id}/salida", salidas::registrarSalida)
+                .post("/api/registros/entrada", operador, registros::registrarEntrada)
+                .get("/api/registros/activos", operador, registros::activos)
+                .get("/api/registros", operador, registros::historial)
+                .get("/api/registros/{id}", operador, registros::buscarPorId)
+                .get("/api/registros/{id}/liquidacion", operador, salidas::liquidar)
+                .post("/api/registros/{id}/salida", operador, salidas::registrarSalida)
 
-                .get("/api/reportes/ingresos", reportes::ingresos)
-                .get("/api/reportes/ocupacion", reportes::ocupacion);
+                // Los ingresos (dinero) son solo del administrador. La ocupación la
+                // usa también el tablero del operador (cupos libres por tipo).
+                .get("/api/reportes/ingresos", administrador, reportes::ingresos)
+                .get("/api/reportes/ocupacion", operador, reportes::ocupacion)
+
+                // Auditoría: el administrador ve la de los operadores; el DBA, toda.
+                .get("/api/auditoria", administrador, auditoria::listar)
+
+                // Pestaña Sistema: solo el DBA administra las cuentas.
+                .get("/api/usuarios", dba, usuarios::listar)
+                .post("/api/usuarios", dba, usuarios::crear)
+                .put("/api/usuarios/{id}", dba, usuarios::actualizar)
+                .put("/api/usuarios/{id}/clave", dba, usuarios::cambiarClave);
     }
 }

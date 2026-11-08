@@ -6,6 +6,7 @@ import { ErrorApi } from '../../api/cliente.js';
 import { cambiarHabilitadoEspacio, listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import ProveedorNotificaciones from '../../context/ProveedorNotificaciones.jsx';
+import SesionDePrueba from '../../test/SesionDePrueba.jsx';
 import Espacios from './Espacios.jsx';
 import { agruparPorPiso, armarFilas, resumirEspacios } from './datosEspacios.js';
 
@@ -39,13 +40,16 @@ const TIPOS = [
 ];
 const ACTIVOS = [{ idRegistro: 28, identificador: 'MVC054', idEspacio: 2 }];
 
-function renderizar() {
+/** Dibuja la pantalla con la sesión de un rol (por defecto, administrador). */
+function renderizar(rol = 'ADMINISTRADOR') {
   const usuario = userEvent.setup();
   render(
     <MemoryRouter>
-      <ProveedorNotificaciones>
-        <Espacios />
-      </ProveedorNotificaciones>
+      <SesionDePrueba rol={rol}>
+        <ProveedorNotificaciones>
+          <Espacios />
+        </ProveedorNotificaciones>
+      </SesionDePrueba>
     </MemoryRouter>,
   );
   return usuario;
@@ -58,10 +62,10 @@ describe('datosEspacios', () => {
 
   it('cruza el tipo (nombre visible), el estado y quién ocupa cada espacio', () => {
     expect(filas.map(({ codigo, tipo, estado }) => [codigo, tipo, estado])).toEqual([
-      ['A-01', 'Carro', 'libre'],
-      ['A-02', 'Carro', 'ocupado'],
-      ['B-04', 'Carro', 'deshabilitado'],
-      ['C-01', 'Camión de carga pesada', 'libre'],
+      ['A1-01', 'Carro', 'libre'],
+      ['A1-02', 'Carro', 'ocupado'],
+      ['B2-04', 'Carro', 'deshabilitado'],
+      ['C2-01', 'Camión de carga pesada', 'libre'],
     ]);
     expect(filas[1].registro.identificador).toBe('MVC054');
   });
@@ -91,11 +95,43 @@ describe('Espacios', () => {
     const piso1 = await screen.findByRole('table', { name: 'Espacios del piso 1' });
     expect(screen.getByRole('table', { name: 'Espacios del piso 2' })).toBeInTheDocument();
     expect(within(piso1).getByText('MVC 054')).toBeInTheDocument();
-    expect(interruptor('A-01')).toHaveAttribute('aria-checked', 'true');
-    expect(interruptor('B-04')).toHaveAttribute('aria-checked', 'false');
+    expect(interruptor('A1-01')).toHaveAttribute('aria-checked', 'true');
+    expect(interruptor('B2-04')).toHaveAttribute('aria-checked', 'false');
     expect(
       screen.getByText('4 espacios: 2 libres, 1 ocupado, 1 deshabilitado.'),
     ).toBeInTheDocument();
+  });
+
+  it('el operador ve los espacios, pero los interruptores están desactivados y un aviso explica por qué', async () => {
+    const usuario = renderizar('OPERADOR');
+    await screen.findByRole('table', { name: 'Espacios del piso 1' });
+
+    expect(
+      screen.getByText('Solo los administradores pueden habilitar o deshabilitar espacios.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Consulta qué espacios están en servicio y quién los ocupa.'),
+    ).toBeInTheDocument();
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toBeDisabled();
+    }
+    // Sigue viendo el mismo estado que el administrador.
+    expect(interruptor('A1-01')).toHaveAttribute('aria-checked', 'true');
+    expect(interruptor('B2-04')).toHaveAttribute('aria-checked', 'false');
+
+    await usuario.click(interruptor('A1-02'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(cambiarHabilitadoEspacio).not.toHaveBeenCalled();
+  });
+
+  it('el administrador no ve el aviso y sus interruptores funcionan', async () => {
+    renderizar('ADMINISTRADOR');
+    await screen.findByRole('table', { name: 'Espacios del piso 1' });
+
+    expect(screen.queryByText(/Solo los administradores pueden/)).not.toBeInTheDocument();
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toBeEnabled();
+    }
   });
 
   it('deshabilitar un espacio ocupado avisa que el vehículo puede salir y llama al endpoint', async () => {
@@ -103,15 +139,15 @@ describe('Espacios', () => {
     const usuario = renderizar();
     await screen.findByRole('table', { name: 'Espacios del piso 1' });
 
-    await usuario.click(interruptor('A-02'));
-    const modal = screen.getByRole('dialog', { name: '¿Deshabilitar el espacio A-02, piso 1?' });
+    await usuario.click(interruptor('A1-02'));
+    const modal = screen.getByRole('dialog', { name: '¿Deshabilitar el espacio A1-02, piso 1?' });
     expect(within(modal).getByText('Ahora está ocupado por MVC 054')).toBeInTheDocument();
     expect(within(modal).getByText(/puede salir normalmente/)).toBeInTheDocument();
 
     await usuario.click(within(modal).getByRole('button', { name: 'Deshabilitar' }));
 
     expect(cambiarHabilitadoEspacio).toHaveBeenCalledWith(2, false);
-    expect(await screen.findByText('Espacio A-02 deshabilitado.')).toBeInTheDocument();
+    expect(await screen.findByText('Espacio A1-02 deshabilitado.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(listarEspacios).toHaveBeenCalledTimes(2));
   });
@@ -121,21 +157,21 @@ describe('Espacios', () => {
     const usuario = renderizar();
     await screen.findByRole('table', { name: 'Espacios del piso 2' });
 
-    await usuario.click(interruptor('B-04'));
-    const modal = screen.getByRole('dialog', { name: '¿Habilitar el espacio B-04, piso 2?' });
+    await usuario.click(interruptor('B2-04'));
+    const modal = screen.getByRole('dialog', { name: '¿Habilitar el espacio B2-04, piso 2?' });
     expect(within(modal).getByText('Volverá a recibir vehículos.')).toBeInTheDocument();
     await usuario.click(within(modal).getByRole('button', { name: 'Habilitar' }));
 
     expect(cambiarHabilitadoEspacio).toHaveBeenCalledWith(16, true);
-    expect(await screen.findByText('Espacio B-04 habilitado.')).toBeInTheDocument();
+    expect(await screen.findByText('Espacio B2-04 habilitado.')).toBeInTheDocument();
   });
 
   it('"Cancelar" no cambia nada', async () => {
     const usuario = renderizar();
     await screen.findByRole('table', { name: 'Espacios del piso 1' });
 
-    await usuario.click(interruptor('A-01'));
-    const modal = screen.getByRole('dialog', { name: '¿Deshabilitar el espacio A-01, piso 1?' });
+    await usuario.click(interruptor('A1-01'));
+    const modal = screen.getByRole('dialog', { name: '¿Deshabilitar el espacio A1-01, piso 1?' });
     expect(within(modal).queryByText(/Ahora está ocupado/)).not.toBeInTheDocument();
     await usuario.click(within(modal).getByRole('button', { name: 'Cancelar' }));
 
@@ -150,7 +186,7 @@ describe('Espacios', () => {
     const usuario = renderizar();
     await screen.findByRole('table', { name: 'Espacios del piso 1' });
 
-    await usuario.click(interruptor('A-01'));
+    await usuario.click(interruptor('A1-01'));
     const modal = screen.getByRole('dialog');
     await usuario.click(within(modal).getByRole('button', { name: 'Deshabilitar' }));
 

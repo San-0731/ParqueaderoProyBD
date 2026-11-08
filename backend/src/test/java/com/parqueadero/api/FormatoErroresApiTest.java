@@ -74,6 +74,7 @@ class FormatoErroresApiTest extends PruebaApi {
         for (String metodo : new String[] {"GET", "POST", "PUT", "PATCH", "OPTIONS"}) {
             assertTrue(metodos.contains(metodo), "Falta " + metodo + " en " + metodos);
         }
-        assertEquals("Content-Type", respuesta.cabecera("Access-Control-Allow-Headers"));
+        // Authorization: por ahí viaja el token de la sesión (Fase 5).
+        assertEquals("Content-Type, Authorization", respuesta.cabecera("Access-Control-Allow-Headers"));
     }
 }

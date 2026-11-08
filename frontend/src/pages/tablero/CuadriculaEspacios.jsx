@@ -24,14 +24,14 @@ function CuadriculaEspacios({ pisos, onDeshabilitado }) {
           </h2>
 
           <div className="space-y-6">
-            {zonas.map(({ zona, tipos, libres, espacios }, indiceZona) => (
+            {zonas.map(({ zona, nombre, tipos, libres, espacios }, indiceZona) => (
               <section key={zona} aria-labelledby={`${prefijo}-${indicePiso}-${indiceZona}`}>
                 <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
                   <h3
                     id={`${prefijo}-${indicePiso}-${indiceZona}`}
                     className="text-lg font-semibold"
                   >
-                    Zona {zona}
+                    Zona {nombre}
                   </h3>
                   <p className="text-sm text-tenue">
                     {tipos.join(' y ')}, {libres} {libres === 1 ? 'libre' : 'libres'} de{' '}

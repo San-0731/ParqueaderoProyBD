@@ -11,7 +11,7 @@ import TituloPaso from './TituloPaso.jsx';
 /**
  * Paso 2: elegir un espacio libre del tipo del vehículo. Cada espacio es un "cajón" que se
  * toca (un radio nativo escondido dentro de un <label>): así funcionan las flechas del
- * teclado y el lector de pantalla anuncia "A-03, piso 1, botón de opción, seleccionado".
+ * teclado y el lector de pantalla anuncia "A1-03, piso 1, botón de opción, seleccionado".
  *
  * @param activo false mientras no haya un vehículo listo (se muestra motivoInactivo)
  * @param espacios espacios libres del tipo del vehículo

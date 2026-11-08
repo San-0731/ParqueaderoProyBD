@@ -12,13 +12,16 @@ import '@fontsource/barlow-condensed/latin-700.css';
 import './index.css';
 import App from './App.jsx';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
+import ProveedorSesion from './context/ProveedorSesion.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <ProveedorNotificaciones>
-        <App />
-      </ProveedorNotificaciones>
+      <ProveedorSesion>
+        <ProveedorNotificaciones>
+          <App />
+        </ProveedorNotificaciones>
+      </ProveedorSesion>
     </BrowserRouter>
   </StrictMode>,
 );

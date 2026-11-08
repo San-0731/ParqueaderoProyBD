@@ -8,6 +8,7 @@ import Campo from '../../components/ui/Campo.jsx';
 import Cargando from '../../components/ui/Cargando.jsx';
 import EstadoVacio from '../../components/ui/EstadoVacio.jsx';
 import { useNotificaciones } from '../../context/NotificacionesContext.js';
+import { useSesion } from '../../context/SesionContext.js';
 import { useConsulta } from '../../hooks/useConsulta.js';
 import {
   formatearPlaca,
@@ -36,6 +37,7 @@ import {
  *   tener varios vehículos y el cambio se ve en todos.
  */
 function Vehiculos() {
+  const puedeEditar = useSesion().puede('ADMINISTRADOR');
   const { datos, cargando, error, recargar } = useConsulta(cargarVehiculos);
   const [parametros, setParametros] = useSearchParams();
   const [texto, setTexto] = useState('');
@@ -143,8 +145,9 @@ function Vehiculos() {
       return (
         <FichaVehiculo
           fila={elegida}
-          onEditarVehiculo={() => setEditando('vehiculo')}
-          onEditarPropietario={() => setEditando('propietario')}
+          // Solo el administrador (o el DBA) edita; al operador no se le muestran los botones.
+          onEditarVehiculo={puedeEditar ? () => setEditando('vehiculo') : undefined}
+          onEditarPropietario={puedeEditar ? () => setEditando('propietario') : undefined}
           onElegir={elegir}
         />
       );

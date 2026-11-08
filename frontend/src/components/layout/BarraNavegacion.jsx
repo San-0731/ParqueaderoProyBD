@@ -1,19 +1,27 @@
 import {
   CarFront,
   ChartColumn,
+  DoorOpen,
   History,
   LayoutGrid,
   LogIn,
   LogOut,
   Menu,
+  ScrollText,
+  Settings,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
+import { useSesion } from '../../context/SesionContext.js';
+import { nombreRol } from '../../utils/roles.js';
 import IndicadorServidor from './IndicadorServidor.jsx';
 
 // Menú agrupado: "Operación" es lo que el operador usa todo el día; "Gestión", lo demás.
+// rolMinimo: el enlace solo aparece si el rol del usuario lo alcanza (utils/roles.js). Una
+// sección que un rol nunca puede usar no se le muestra; si escribe la dirección, RequiereRol le
+// explica quién puede usarla.
 const GRUPOS = [
   {
     titulo: 'Operación',
@@ -28,8 +36,11 @@ const GRUPOS = [
     enlaces: [
       { ruta: '/vehiculos', texto: 'Vehículos', icono: CarFront },
       { ruta: '/historial', texto: 'Historial', icono: History },
-      { ruta: '/reportes', texto: 'Reportes', icono: ChartColumn },
+      { ruta: '/reportes', texto: 'Reportes', icono: ChartColumn, rolMinimo: 'ADMINISTRADOR' },
       { ruta: '/espacios', texto: 'Espacios', icono: SlidersHorizontal },
+      { ruta: '/auditoria', texto: 'Auditoría', icono: ScrollText, rolMinimo: 'ADMINISTRADOR' },
+      // La pestaña exclusiva del DBA: usuarios, zonas, espacios, marcas y modelos.
+      { ruta: '/sistema', texto: 'Sistema', icono: Settings, rolMinimo: 'DBA' },
     ],
   },
 ];
@@ -44,9 +55,11 @@ function clasesEnlace({ isActive }) {
 
 /**
  * Barra de navegación. Es UN solo menú: en escritorio (≥ 1024 px) es la barra lateral fija;
- * en celular y tablet vertical se abre y se cierra con el botón "Menú".
+ * en celular y tablet vertical se abre y se cierra con el botón "Menú". Abajo muestra quién
+ * inició sesión y el botón para cerrarla.
  */
 function BarraNavegacion() {
+  const { usuario, puede, cerrarSesion } = useSesion();
   const { pathname } = useLocation();
   // Se guarda la ruta en la que se abrió el menú: al navegar a otra, queda cerrado solo,
   // sin necesidad de un efecto.
@@ -90,28 +103,54 @@ function BarraNavegacion() {
         </button>
       </div>
 
-      <nav
+      <div
         id="menu-principal"
-        aria-label="Principal"
-        className={`${abierto ? 'block' : 'hidden'} border-t border-white/10 px-3 pb-4 lg:block lg:flex-1 lg:overflow-y-auto lg:border-0`}
+        className={`${abierto ? 'flex' : 'hidden'} flex-col border-t border-white/10 lg:flex lg:min-h-0 lg:flex-1 lg:border-0`}
       >
-        {GRUPOS.map((grupo) => (
-          <div key={grupo.titulo} className="mt-4">
-            <p className="px-3 pb-1.5 text-sm font-medium text-white/60">{grupo.titulo}</p>
-            <ul className="space-y-1">
-              {grupo.enlaces.map(({ ruta, texto, icono: Icono }) => (
-                <li key={ruta}>
-                  {/* end en "/": el Tablero solo queda activo en la raíz, no en todas las rutas. */}
-                  <NavLink to={ruta} end={ruta === '/'} className={clasesEnlace}>
-                    <Icono aria-hidden="true" className="size-5 shrink-0" />
-                    {texto}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+        <nav aria-label="Principal" className="px-3 pb-4 lg:flex-1 lg:overflow-y-auto">
+          {GRUPOS.map((grupo) => {
+            const enlaces = grupo.enlaces.filter(
+              (enlace) => !enlace.rolMinimo || puede(enlace.rolMinimo),
+            );
+            if (enlaces.length === 0) {
+              return null;
+            }
+            return (
+              <div key={grupo.titulo} className="mt-4">
+                <p className="px-3 pb-1.5 text-sm font-medium text-white/60">{grupo.titulo}</p>
+                <ul className="space-y-1">
+                  {enlaces.map(({ ruta, texto, icono: Icono }) => (
+                    <li key={ruta}>
+                      {/* end en "/": el Tablero solo queda activo en la raíz, no en todas las rutas. */}
+                      <NavLink to={ruta} end={ruta === '/'} className={clasesEnlace}>
+                        <Icono aria-hidden="true" className="size-5 shrink-0" />
+                        {texto}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </nav>
+
+        {usuario && (
+          <div className="border-t border-white/10 px-3 py-4">
+            <p className="px-3 font-semibold">{usuario.nombreCompleto}</p>
+            <p className="px-3 pb-2 text-sm text-white/70">
+              {nombreRol(usuario.rol)} · {usuario.nombreUsuario}
+            </p>
+            <button
+              type="button"
+              onClick={cerrarSesion}
+              className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 font-medium text-white/80 hover:bg-asfalto-claro hover:text-white"
+            >
+              <DoorOpen aria-hidden="true" className="size-5 shrink-0" />
+              Cerrar sesión
+            </button>
           </div>
-        ))}
-      </nav>
+        )}
+      </div>
     </header>
   );
 }

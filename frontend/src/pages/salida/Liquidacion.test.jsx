@@ -89,7 +89,7 @@ describe('Liquidacion (cobro de la salida)', () => {
     expect(screen.queryByText(pesos(35000))).not.toBeInTheDocument();
     expect(screen.getByText(/^7 h × \$\s5\.000 la hora/)).toBeInTheDocument();
     expect(screen.getByText('MVC 054')).toBeInTheDocument();
-    expect(screen.getByText('A-02, piso 1')).toBeInTheDocument();
+    expect(screen.getByText('A1-02, piso 1')).toBeInTheDocument();
     expect(screen.getByText('6 h 35 min')).toBeInTheDocument();
     expect(screen.getByText('Carro')).toBeInTheDocument();
     expect(screen.getByText('Laura Camila Pérez')).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe('Liquidacion (cobro de la salida)', () => {
 
     const dialogo = await pagarConNequi(usuario, '  NEQ-1 ');
     expect(dialogo).toHaveTextContent(
-      `MVC 054 sale del espacio A-02, piso 1. Se cobran ${pesos(34500)} con Nequi, referencia NEQ-1.`,
+      `MVC 054 sale del espacio A1-02, piso 1. Se cobran ${pesos(34500)} con Nequi, referencia NEQ-1.`,
     );
     await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar pago y salida' }));
 

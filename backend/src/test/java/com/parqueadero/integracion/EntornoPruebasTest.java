@@ -35,19 +35,25 @@ class EntornoPruebasTest extends PruebaIntegracion {
         assertEquals(Set.of("parqueadero_test"), consultarNombres("SELECT DATABASE()"));
     }
 
-    /** El script recrear-bd-pruebas.sh aplicó todas las migraciones (V001 a V005). */
+    /** El script recrear-bd-pruebas.sh aplicó todas las migraciones (V001 a V008). */
     @Test
     void laBaseDePruebasTieneTodasLasTablasVistasYTriggers() throws SQLException {
         assertEquals(Set.of("tipo_vehiculo", "tarifa", "marca", "modelo", "cliente", "vehiculo",
-                        "espacio", "registro_parqueo", "metodo_pago", "pago"),
+                        "zona", "espacio", "registro_parqueo", "metodo_pago", "pago",
+                        "rol", "usuario", "sesion", "auditoria"),
                 consultarNombres("SELECT TABLE_NAME FROM information_schema.TABLES"
                         + " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"));
         assertEquals(Set.of("vw_espacios_disponibles", "vw_parqueos_activos",
-                        "vw_historial_parqueos", "vw_ingresos_por_metodo"),
+                        "vw_historial_parqueos", "vw_ingresos_por_metodo",
+                        "vw_auditoria", "vw_auditoria_operadores"),
                 consultarNombres("SELECT TABLE_NAME FROM information_schema.VIEWS"
                         + " WHERE TABLE_SCHEMA = DATABASE()"));
         assertEquals(Set.of("trg_vehiculo_normalizar_insert", "trg_vehiculo_normalizar_update",
-                        "trg_registro_validar_insert", "trg_registro_validar_update"),
+                        "trg_registro_validar_insert", "trg_registro_validar_update",
+                        "trg_cliente_auditar_insert", "trg_cliente_auditar_update",
+                        "trg_vehiculo_auditar_insert", "trg_vehiculo_auditar_update",
+                        "trg_registro_parqueo_auditar_insert", "trg_registro_parqueo_auditar_update",
+                        "trg_pago_auditar_insert", "trg_espacio_auditar_update"),
                 consultarNombres("SELECT TRIGGER_NAME FROM information_schema.TRIGGERS"
                         + " WHERE TRIGGER_SCHEMA = DATABASE()"));
     }

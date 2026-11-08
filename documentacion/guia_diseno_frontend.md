@@ -108,9 +108,78 @@ Los componentes del dominio que usan varias pantallas van en `components/<tema>/
 | `validaciones.js` | Los mismos límites y mensajes del backend, para avisar antes de enviar |
 
 Las funciones de formato que comparten varias pantallas van en `utils/`. Por ejemplo,
-`utils/espacio.js` tiene `codigoEspacio` ("A-01"), `nombreEspacio` ("A-01, piso 1") y
+`utils/espacio.js` tiene `nombreZona` ("A1": la letra seguida del piso, porque la misma letra
+puede repetirse en otro piso), `codigoEspacio` ("A1-01"), `nombreEspacio` ("A1-01, piso 1") y
 `estadoEspacio` (libre, ocupado o deshabilitado; la usan el tablero y la administración de
-espacios).
+espacios). Toda zona o espacio que se muestre usa estas funciones, nunca la letra sola.
+
+## Sesión y roles
+
+Todas las pantallas, menos `/login`, exigen sesión. Las piezas son:
+
+| Pieza | Para qué |
+|---|---|
+| `api/autenticacion.js` | `iniciarSesion`, `cerrarSesion` y `consultarUsuarioActual` (`/auth/...`) |
+| `api/sesionGuardada.js` | Guarda `{ token, usuario }` en `sessionStorage`: dura lo que la pestaña |
+| `api/cliente.js` | Envía el token en `Authorization: Bearer ...`; si una petición con token recibe 401, avisa con `alPerderSesion` |
+| `context/ProveedorSesion` | Comparte la sesión con toda la app; al recibir 401 la cierra y la pantalla de inicio muestra "Tu sesión terminó" |
+| `useSesion()` | `{ usuario, puede, iniciarSesion, cerrarSesion, aviso }` desde cualquier pantalla |
+| `components/sesion/RutaProtegida` | Sin sesión lleva a `/login` y, al entrar, vuelve a la pantalla que se pidió |
+| `components/sesion/RequiereRol` | Muestra la pantalla solo si el rol alcanza; si no, `pages/SinPermiso` explica quién puede usarla |
+| `utils/roles.js` | `alcanza(rol, minimo)` y `nombreRol(rol)`: la misma jerarquía del backend (`Rol.java`) |
+
+Para decidir qué ve cada rol:
+- **Una sección que el rol nunca puede usar no aparece en el menú** (`rolMinimo` en
+  `BarraNavegacion`). Si alguien escribe la dirección, `RequiereRol` le explica quién puede usarla.
+- **Una pantalla que sirve para consultar, pero tiene acciones restringidas, se ve en modo solo
+  lectura**: el control desactivado y una `Alerta tipo="info"` arriba que explica por qué. Ejemplo:
+  los interruptores de Espacios para el operador.
+- **Un botón de una acción restringida no se dibuja** (por ejemplo, "Editar vehículo" para el
+  operador): la pantalla pasa el manejador solo si `puede('ADMINISTRADOR')`.
+- Ocultar o desactivar es solo comodidad. Quien protege de verdad es el backend, que responde 403.
+
+```jsx
+const { puede } = useSesion();
+const puedeEditar = puede('ADMINISTRADOR');
+<FichaVehiculo onEditarVehiculo={puedeEditar ? abrirEdicion : undefined} />
+```
+
+En las pruebas de una pantalla, `test/SesionDePrueba.jsx` da la sesión de un rol sin pasar por el
+login: `<SesionDePrueba rol="OPERADOR"><Espacios /></SesionDePrueba>`.
+
+## Auditoría (`pages/auditoria/`)
+
+Solo para administrador y DBA. La llenan los triggers de la base (V008); la pantalla solo la lee.
+
+- Filtros: rango de fechas (atajos y "Desde"/"Hasta", empieza en los últimos 7 días) y sección
+  (entradas y salidas, pagos, vehículos, propietarios, espacios).
+- Cada fila dice quién (nombre, rol y usuario), qué hizo en palabras (`describirAccion`:
+  "Registró una salida", "Deshabilitó un espacio"…) y el detalle (`detalle`): al crear, los datos
+  guardados; al editar, la fila (placa o espacio) y solo lo que cambió, como "antes → después".
+- Las placas van con `<Placa>` y los tipos con `nombreTipoVisible()`, como en toda la app.
+- El administrador solo recibe los cambios de los operadores; el DBA, todos. Lo filtra el backend
+  (con dos vistas de la base), no la pantalla.
+
+## Pestaña Sistema (`pages/sistema/`)
+
+Es la pestaña exclusiva del DBA. `Sistema.jsx` pone el título y las secciones como pestañas
+(`NavLink` con una línea azul abajo en la activa); cada sección es una ruta hija
+(`/sistema/usuarios`…) que se dibuja en su `<Outlet />`. `/sistema` lleva a la primera.
+
+- **Usuarios** (`sistema/usuarios/`): tabla de cuentas y tres modales (crear, editar y cambiar la
+  contraseña). El nombre de usuario no se edita, igual que la placa. Los usuarios no se borran:
+  se desactivan con el interruptor "Puede iniciar sesión". Las reglas del formulario están en
+  `validacionesUsuario.js` y son las mismas del backend.
+- Cuando el DBA se edita a sí mismo, el modal avisa que quitarse el rol o desactivarse cierra su
+  sesión.
+- **Zonas y espacios** (`sistema/zonas/`): tabla de zonas (nombre `A1`, piso, tipo visible y
+  cuántos espacios tiene) y dos modales. "Nueva zona" pide piso, letra y tipo, y avisa si con
+  ella aparece un piso nuevo. "Agregar espacios" muestra cuáles se van a crear (`A1-09 a A1-11`):
+  siguen la numeración de la zona hasta el 99. Las reglas están en `datosZonas.js`. Las zonas y
+  los espacios no se borran: un espacio se retira deshabilitándolo en Espacios.
+- **Marcas y modelos** (`sistema/marcas/`): cada marca con sus modelos y un mismo modal
+  (`ModalNombre`) para crear una marca o un modelo. Un nombre repetido (409) se muestra junto al
+  campo.
 
 ## Flujo por pasos con resumen fijo (entrada)
 

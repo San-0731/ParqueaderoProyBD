@@ -24,7 +24,8 @@ function Dato({ etiqueta, className = '', children }) {
 
 /**
  * Ficha de un vehículo: sus datos, si está dentro del parqueadero y su propietario, cada parte
- * con su botón "Editar".
+ * con su botón "Editar". Sin onEditarVehiculo u onEditarPropietario (rol sin permiso para
+ * editar) ese botón no se muestra.
  *
  * @param fila fila de armarFilas (datosVehiculos.js)
  * @param onElegir recibe el idVehiculo de otro vehículo del mismo propietario
@@ -45,9 +46,11 @@ function FichaVehiculo({ fila, onEditarVehiculo, onEditarPropietario, onElegir }
             <span className="sr-only">Vehículo </span>
             <Placa identificador={vehiculo.identificador} tamano="grande" />
           </h2>
-          <Boton variante="secundario" icono={PencilLine} onClick={onEditarVehiculo}>
-            Editar vehículo
-          </Boton>
+          {onEditarVehiculo && (
+            <Boton variante="secundario" icono={PencilLine} onClick={onEditarVehiculo}>
+              Editar vehículo
+            </Boton>
+          )}
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -91,7 +94,7 @@ function FichaVehiculo({ fila, onEditarVehiculo, onEditarPropietario, onElegir }
           <h3 id={idPropietario} className="font-condensada text-2xl font-semibold">
             Propietario
           </h3>
-          {propietario && (
+          {propietario && onEditarPropietario && (
             <Boton variante="secundario" icono={PencilLine} onClick={onEditarPropietario}>
               Editar propietario
             </Boton>

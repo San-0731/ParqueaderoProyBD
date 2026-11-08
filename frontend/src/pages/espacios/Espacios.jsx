@@ -10,13 +10,19 @@ import Interruptor from '../../components/ui/Interruptor.jsx';
 import Placa from '../../components/ui/Placa.jsx';
 import Tabla from '../../components/ui/Tabla.jsx';
 import { useNotificaciones } from '../../context/NotificacionesContext.js';
+import { useSesion } from '../../context/SesionContext.js';
 import { useConsulta } from '../../hooks/useConsulta.js';
 import { codigoEspacio } from '../../utils/espacio.js';
 import { SIN_DATO } from '../../utils/formato.js';
 import ModalCambiarServicio from './ModalCambiarServicio.jsx';
 import { agruparPorPiso, cargarEspacios, resumirEspacios } from './datosEspacios.js';
 
-/** Tabla de los espacios de un piso. */
+/**
+ * Tabla de los espacios de un piso.
+ *
+ * @param onCambiar al tocar el interruptor de una fila; sin él (rol sin permiso) los
+ *        interruptores se muestran desactivados, solo para consultar
+ */
 function TablaPiso({ piso, filas, onCambiar }) {
   const idTitulo = useId();
   return (
@@ -29,7 +35,7 @@ function TablaPiso({ piso, filas, onCambiar }) {
         filas={filas}
         claveFila="codigo"
         // El interruptor va justo después del código: es la acción de esta pantalla y así se
-        // alcanza en celular sin desplazar la tabla. La zona ya está en el código (A-01).
+        // alcanza en celular sin desplazar la tabla. La zona ya está en el código (A1-01).
         columnas={[
           {
             clave: 'codigo',
@@ -46,7 +52,8 @@ function TablaPiso({ piso, filas, onCambiar }) {
               <Interruptor
                 activo={fila.espacio.habilitado}
                 etiqueta={`En servicio ${fila.codigo}`}
-                onCambiar={() => onCambiar(fila)}
+                disabled={!onCambiar}
+                onCambiar={() => onCambiar?.(fila)}
               />
             ),
           },
@@ -71,8 +78,13 @@ function TablaPiso({ piso, filas, onCambiar }) {
 /**
  * Administración de espacios: todos los espacios por piso, con su estado y un interruptor para
  * ponerlos fuera de servicio o volver a habilitarlos (siempre con confirmación).
+ *
+ * El operador ve la misma pantalla, pero los interruptores están desactivados y un aviso
+ * explica que solo los administradores pueden cambiarlos (el backend también lo impide).
  */
 function Espacios() {
+  const { puede } = useSesion();
+  const puedeCambiar = puede('ADMINISTRADOR');
   const { datos, cargando, error, recargar } = useConsulta(cargarEspacios);
   // Fila del espacio que se va a cambiar; mientras no sea null, el modal está abierto.
   const [cambiando, setCambiando] = useState(null);
@@ -120,7 +132,12 @@ function Espacios() {
           {resumirEspacios(datos)}.
         </p>
         {agruparPorPiso(datos).map(({ piso, filas }) => (
-          <TablaPiso key={piso} piso={piso} filas={filas} onCambiar={setCambiando} />
+          <TablaPiso
+            key={piso}
+            piso={piso}
+            filas={filas}
+            onCambiar={puedeCambiar ? setCambiando : null}
+          />
         ))}
       </>
     );
@@ -130,8 +147,19 @@ function Espacios() {
     <>
       <EncabezadoPagina
         titulo="Administración de espacios"
-        descripcion="Pon un espacio fuera de servicio (por mantenimiento, por ejemplo) o vuelve a habilitarlo."
+        descripcion={
+          puedeCambiar
+            ? 'Pon un espacio fuera de servicio (por mantenimiento, por ejemplo) o vuelve a habilitarlo.'
+            : 'Consulta qué espacios están en servicio y quién los ocupa.'
+        }
       />
+      {!puedeCambiar && (
+        <div className="mb-6">
+          <Alerta tipo="info">
+            Solo los administradores pueden habilitar o deshabilitar espacios.
+          </Alerta>
+        </div>
+      )}
       {contenido()}
       {cambiando && (
         <ModalCambiarServicio

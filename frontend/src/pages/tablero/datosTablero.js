@@ -3,7 +3,7 @@
 import { listarEspacios } from '../../api/espacios.js';
 import { listarActivos } from '../../api/registros.js';
 import { consultarOcupacion } from '../../api/reportes.js';
-import { codigoEspacio, estadoEspacio } from '../../utils/espacio.js';
+import { codigoEspacio, estadoEspacio, nombreZona } from '../../utils/espacio.js';
 import { nombreTipoVisible } from '../../utils/tipoVehiculo.js';
 
 /**
@@ -52,8 +52,9 @@ export function tipoElegido(valorUrl, ocupacion) {
  *
  * @param idTipo si no es null, solo se incluyen los espacios de ese tipo (los pisos y zonas
  *        que quedan vacíos no aparecen)
- * @returns [{ piso, zonas: [{ zona, tipos, libres, espacios: [{ ...espacio, codigo, estado,
- *          registro }] }] }], donde tipos son los nombres de los tipos de la zona ("Carro")
+ * @returns [{ piso, zonas: [{ zona, nombre, tipos, libres, espacios: [{ ...espacio, codigo,
+ *          estado, registro }] }] }], donde nombre es el de la zona ("A1") y tipos son los
+ *          nombres de los tipos de la zona ("Carro")
  */
 export function agruparPorPisoYZona({ espacios, activos, ocupacion, idTipo = null }) {
   const registroPorEspacio = new Map(activos.map((registro) => [registro.idEspacio, registro]));
@@ -71,7 +72,13 @@ export function agruparPorPisoYZona({ espacios, activos, ocupacion, idTipo = nul
     }
     const zonas = pisos.get(espacio.piso);
     if (!zonas.has(espacio.zona)) {
-      zonas.set(espacio.zona, { zona: espacio.zona, tipos: [], libres: 0, espacios: [] });
+      zonas.set(espacio.zona, {
+        zona: espacio.zona,
+        nombre: nombreZona(espacio),
+        tipos: [],
+        libres: 0,
+        espacios: [],
+      });
     }
     const zona = zonas.get(espacio.zona);
 

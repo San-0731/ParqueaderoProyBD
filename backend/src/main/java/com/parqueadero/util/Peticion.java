@@ -1,6 +1,8 @@
 package com.parqueadero.util;
 
 import com.parqueadero.exception.DatosInvalidosException;
+import com.parqueadero.exception.NoAutenticadoException;
+import com.parqueadero.model.Usuario;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -9,21 +11,45 @@ import java.util.Map;
 /**
  * Una petición HTTP ya procesada por el {@link Router}: método, ruta,
  * parámetros de ruta ({@code {id}}) y de query ({@code ?identificador=...}),
- * ambos ya decodificados, y el cuerpo sin procesar.
+ * ambos ya decodificados, el cuerpo sin procesar y la sesión.
  *
  * @param metodo          método HTTP en mayúsculas (GET, POST, ...)
  * @param ruta            ruta tal como llegó, sin la query
  * @param parametrosRuta  valores de los {@code {parametros}} del patrón
  * @param parametrosQuery parámetros de la query string
  * @param cuerpo          cuerpo de la petición; puede ser {@code null} o vacío
+ * @param token           token de la cabecera {@code Authorization: Bearer ...},
+ *                        o {@code null} si no vino
+ * @param usuario         usuario de la sesión. El {@link Router} solo lo busca en
+ *                        las rutas que exigen un rol; en las públicas es {@code null}
  */
 public record Peticion(String metodo, String ruta, Map<String, String> parametrosRuta,
-        Map<String, String> parametrosQuery, String cuerpo) {
+        Map<String, String> parametrosQuery, String cuerpo, String token, Usuario usuario) {
+
+    /** Respuesta cuando la petición no trae token. */
+    public static final String MENSAJE_SIN_SESION = "Inicia sesión para continuar.";
+
+    /** Respuesta cuando el token no corresponde a una sesión vigente. */
+    public static final String MENSAJE_SESION_INVALIDA =
+            "Tu sesión terminó o no es válida. Inicia sesión de nuevo.";
 
     public Peticion {
         // Copias inmutables: nadie puede cambiar los parámetros después.
         parametrosRuta = Map.copyOf(parametrosRuta);
         parametrosQuery = Map.copyOf(parametrosQuery);
+    }
+
+    /**
+     * El usuario de la sesión. En las rutas con rol el {@link Router} ya lo
+     * comprobó, así que nunca falla ahí.
+     *
+     * @throws NoAutenticadoException si la petición no tiene una sesión válida
+     */
+    public Usuario usuarioAutenticado() {
+        if (usuario != null) {
+            return usuario;
+        }
+        throw new NoAutenticadoException(token == null ? MENSAJE_SIN_SESION : MENSAJE_SESION_INVALIDA);
     }
 
     /**

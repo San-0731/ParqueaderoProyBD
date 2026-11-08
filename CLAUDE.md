@@ -49,6 +49,11 @@ Proyecto académico de la materia Bases de Datos.
 - El frontend no calcula cobros: usa los valores de la liquidación del backend.
 - npm test -- --run incluye la revisión de accesibilidad con axe-core
   (src/accesibilidad.test.jsx).
+- Sesión y roles (OPERADOR ⊆ ADMINISTRADOR ⊆ DBA): useSesion().puede('ADMINISTRADOR'); el menú
+  oculta lo que el rol no puede usar y RequiereRol protege la ruta. La regla de roles está en
+  utils/roles.js y backend model/Rol.java (deben coincidir). Toda ruta nueva de la API declara
+  su rol mínimo en Servidor.java (ServidorRutasTest falla si queda pública por olvido).
+- Zonas: la zona se nombra letra + piso (A1) y el espacio A1-01 (utils/espacio.js).
 
 ## Comandos
 - Frontend (desde frontend/; la primera vez: cp .env.example .env.local):
@@ -65,8 +70,30 @@ Proyecto académico de la materia Bases de Datos.
   y mvn clean package las salta):
   ./database/scripts/recrear-bd-pruebas.sh
   cd backend && mvn verify -Pintegracion
-- Probar la API: backend/api.http (extensión REST Client)
+- Probar la API: backend/api.http (extensión REST Client; primero "Iniciar sesión")
 - Base de datos: docker compose up -d (desde la raíz; ver documentacion/guia_docker.md)
+- Migración nueva en una base que ya existe (respalda antes):
+  ./database/scripts/aplicar-migracion.sh database/migrations/V00N__descripcion.sql
+- Permisos del usuario de la app (rol de MySQL de V009): ./database/scripts/aplicar-permisos.sh
+  y ./database/scripts/verificar-permisos.sh. La base de pruebas conserva ALL.
+- Las e2e inician sesión con DBA_USUARIO/DBA_CLAVE_INICIAL del .env: el backend crea ese DBA al
+  arrancar, así que después de recrear la base de pruebas hay que reiniciar el backend.
+
+## Pruebas de lo nuevo (obligatorio)
+- Las pruebas se escriben junto con el código, en la misma rama, siguiendo el
+  patrón de las que ya existen en esa capa:
+  - unitarias del backend (service/, util/...: sin base de datos);
+  - de API (api/, heredan de PruebaApi: servidor real e inicio de sesión);
+  - de base de datos (bd/, heredan de PruebaBaseDatos: transacción con rollback)
+    cuando se agregan o cambian tablas, restricciones, triggers o vistas;
+  - del frontend con Vitest (y la pantalla nueva en src/accesibilidad.test.jsx).
+- Si el cambio toca un flujo importante (entrada, salida o pago), actualizar su
+  prueba E2E (frontend/e2e/) y correr todas las E2E en local antes de fusionar.
+- Si hay migraciones nuevas: recrear la base de pruebas con
+  ./database/scripts/recrear-bd-pruebas.sh antes de mvn verify -Pintegracion, y
+  reiniciar el backend de pruebas antes de las E2E (crea el DBA al arrancar).
+- Una tarea no está terminada hasta que pasan mvn verify -Pintegracion,
+  npm test -- --run y npm run lint (y las E2E si se tocó un flujo importante).
 
 ## Forma de trabajar
 - Antes de cambios grandes, presentar un plan y esperar aprobación.

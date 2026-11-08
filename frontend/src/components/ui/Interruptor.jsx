@@ -2,9 +2,9 @@
  * Interruptor de encendido y apagado (role="switch"). Muestra "Sí" o "No" al lado, así el
  * estado no depende solo del color ni de la posición de la perilla.
  *
- * <Interruptor activo={espacio.habilitado} etiqueta="En servicio A-01" onCambiar={...} />
+ * <Interruptor activo={espacio.habilitado} etiqueta="En servicio A1-01" onCambiar={...} />
  *
- * @param etiqueta nombre para el lector de pantalla (por ejemplo, "En servicio A-01")
+ * @param etiqueta nombre para el lector de pantalla (por ejemplo, "En servicio A1-01")
  * @param onCambiar se llama al tocarlo; quien lo usa decide (por ejemplo, pide confirmación)
  */
 function Interruptor({ activo, etiqueta, onCambiar, disabled = false }) {

@@ -5,6 +5,13 @@ import { expect } from '@playwright/test';
 // La regla "las llamadas a la API solo salen de src/api/" es del código de la app, no de las
 // pruebas.
 
+/**
+ * Espera para lo que pasa por PBKDF2 en el backend (iniciar sesión, crear un usuario): el hash
+ * de una contraseña es lento a propósito (600.000 iteraciones) y, con tres navegadores en
+ * paralelo, puede tardar más que los 5 s por defecto de expect.
+ */
+export const ESPERA_CONTRASENA = { timeout: 20_000 };
+
 /** URL de la API (la misma que usa el frontend en .env.local). */
 export const API = process.env.E2E_API_URL ?? 'http://localhost:8080/api';
 
@@ -143,4 +150,52 @@ export async function sacarSiSigueDentro(request, identificador) {
       await new Promise((listo) => setTimeout(listo, 1_200));
     }
   }
+}
+
+/**
+ * Crea por la API (con la sesión del DBA de e2e/preparacion.js) un usuario activo con el rol
+ * pedido, un nombre que no existe y una contraseña al azar. Devuelve { nombreUsuario, clave }.
+ * Los usuarios no se borran (en la aplicación se desactivan); quedan en la base de pruebas.
+ */
+export async function crearUsuarioPorApi(request, rol) {
+  const nombreUsuario = `e2e_${rol.toLowerCase().slice(0, 5)}_${azar(8, 'abcdefghijklmnopqrstuvwxyz0123456789')}`;
+  const clave = `clave-${azar(12, 'abcdefghijklmnopqrstuvwxyz0123456789')}`;
+  const token = JSON.parse(process.env.E2E_SESION_DBA).token;
+  await json(
+    await request.post(`${API}/usuarios`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { nombreUsuario, nombreCompleto: `Prueba E2E ${rol}`, rol, clave },
+    }),
+  );
+  return { nombreUsuario, clave };
+}
+
+/** Inicia sesión por la API con { nombreUsuario, clave } y devuelve el token. */
+export async function tokenPorApi(request, { nombreUsuario, clave }) {
+  const sesion = await json(
+    await request.post(`${API}/auth/login`, { data: { nombreUsuario, clave } }),
+  );
+  return sesion.token;
+}
+
+/**
+ * Crea por la API, con el token de quien lo hace, un propietario y un carro suyo. Devuelve la
+ * placa. Sirve para que el cambio quede en la auditoría a nombre de ese usuario.
+ */
+export async function registrarCarroComo(request, token) {
+  const encabezados = { Authorization: `Bearer ${token}` };
+  const cliente = await json(
+    await request.post(`${API}/clientes`, {
+      headers: encabezados,
+      data: { documento: await documentoLibre(request), nombres: 'Prueba', apellidos: 'Auditoría' },
+    }),
+  );
+  const placa = await placaLibre(request, 'Carro');
+  await json(
+    await request.post(`${API}/vehiculos`, {
+      headers: encabezados,
+      data: { identificador: placa, idCliente: cliente.idCliente },
+    }),
+  );
+  return placa;
 }
