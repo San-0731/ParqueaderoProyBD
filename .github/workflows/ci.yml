@@ -86,6 +86,13 @@ jobs:
           MODO_MYSQL: directo
         run: ./database/scripts/recrear-bd-pruebas.sh
 
+      # El rol de MySQL de la aplicación (V009) debe tener justo los permisos que necesita:
+      # el script prueba con un usuario temporal que lo permitido funcione y lo demás dé 1142.
+      - name: Verificar los permisos del rol de la aplicación
+        env:
+          MODO_MYSQL: directo
+        run: ./database/scripts/verificar-permisos.sh
+
       - name: Pruebas del backend (unitarias + integración)
         working-directory: backend
         run: mvn -B verify -Pintegracion
