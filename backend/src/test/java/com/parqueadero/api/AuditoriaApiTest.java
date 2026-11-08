@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.parqueadero.model.Rol;
+import com.parqueadero.util.Fechas;
 import com.parqueadero.util.TipoPorPlaca;
 import org.junit.jupiter.api.Test;
 
@@ -119,9 +120,12 @@ class AuditoriaApiTest extends PruebaApi {
         String placa = registrarCarro(tokenDe(operador));
         String token = tokenConRol(Rol.ADMINISTRADOR);
 
-        // Ayer no hubo nada de esta prueba; hoy sí.
-        String ayer = java.time.LocalDate.now().minusDays(1).toString();
-        String hoy = java.time.LocalDate.now().toString();
+        // Ayer no hubo nada de esta prueba; hoy sí. "Hoy" es el de Bogotá (Fechas.hoy()), igual
+        // que en MySQL y en la aplicación: con LocalDate.now() la prueba dependería de la zona
+        // horaria de la máquina (en GitHub Actions es UTC, y después de las 7 p. m. de Bogotá
+        // ya sería el día siguiente).
+        String hoy = Fechas.hoy().toString();
+        String ayer = Fechas.hoy().minusDays(1).toString();
         assertEquals(List.of(), deLaPlaca(auditoria(token, "?desde=" + ayer + "&hasta=" + ayer), placa));
         assertEquals(1, deLaPlaca(auditoria(token, "?desde=" + hoy + "&hasta=" + hoy), placa).size());
         // Con otra tabla, el vehículo no aparece.
