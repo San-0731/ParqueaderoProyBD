@@ -149,7 +149,7 @@ describe('errores', () => {
     expect(error.mensaje).toMatch(/No se pudo conectar con el servidor/);
   });
 
-  it('cancela la petición después de 15 s y lanza TIEMPO_AGOTADO', async () => {
+  it('espera hasta 70 s (arranque en frío del servidor) y luego lanza TIEMPO_AGOTADO', async () => {
     vi.useFakeTimers();
     // fetch que nunca responde: solo termina cuando se cancela con el AbortController.
     fetchSimulado.mockImplementation(
@@ -161,8 +161,15 @@ describe('errores', () => {
         }),
     );
 
-    const resultado = capturarError(get('/espacios'));
-    await vi.advanceTimersByTimeAsync(15_000);
+    let terminada = false;
+    const resultado = capturarError(get('/espacios')).finally(() => {
+      terminada = true;
+    });
+    // A los 69 s todavía espera: el servidor gratuito puede tardar cerca de un minuto en despertar.
+    await vi.advanceTimersByTimeAsync(69_000);
+    expect(terminada).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1_000);
     const error = await resultado;
 
     expect(error).toMatchObject({ estado: 0, codigo: 'TIEMPO_AGOTADO' });
