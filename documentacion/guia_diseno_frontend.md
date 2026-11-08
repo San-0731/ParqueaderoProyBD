@@ -159,6 +159,14 @@ Es la pestaña exclusiva del DBA. `Sistema.jsx` pone el título y las secciones 
   `validacionesUsuario.js` y son las mismas del backend.
 - Cuando el DBA se edita a sí mismo, el modal avisa que quitarse el rol o desactivarse cierra su
   sesión.
+- **Zonas y espacios** (`sistema/zonas/`): tabla de zonas (nombre `A1`, piso, tipo visible y
+  cuántos espacios tiene) y dos modales. "Nueva zona" pide piso, letra y tipo, y avisa si con
+  ella aparece un piso nuevo. "Agregar espacios" muestra cuáles se van a crear (`A1-09 a A1-11`):
+  siguen la numeración de la zona hasta el 99. Las reglas están en `datosZonas.js`. Las zonas y
+  los espacios no se borran: un espacio se retira deshabilitándolo en Espacios.
+- **Marcas y modelos** (`sistema/marcas/`): cada marca con sus modelos y un mismo modal
+  (`ModalNombre`) para crear una marca o un modelo. Un nombre repetido (409) se muestra junto al
+  campo.
 
 ## Flujo por pasos con resumen fijo (entrada)
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API } from './apoyo.js';
+import { API, ESPERA_CONTRASENA } from './apoyo.js';
 import { CLAVE_SESION } from './sesion.js';
 
 // Inicio y cierre de sesión por la pantalla. Usa el `test` original de Playwright (sin la sesión
@@ -23,9 +23,9 @@ test('sin sesión, una pantalla lleva al inicio y al entrar vuelve a ella', asyn
 
   await iniciarSesion(page, usuario(), clave());
 
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Historial de parqueos' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Historial de parqueos' })).toBeVisible(
+    ESPERA_CONTRASENA,
+  );
   await expect(page).toHaveURL(/\/historial$/);
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
   // El DBA ve todo el menú, incluido Reportes.
@@ -37,14 +37,19 @@ test('con la contraseña equivocada muestra el mensaje y no entra', async ({ pag
 
   await iniciarSesion(page, usuario(), `${clave()}-mal`);
 
-  await expect(page.getByRole('alert')).toContainText('Usuario o contraseña incorrectos.');
+  await expect(page.getByRole('alert')).toContainText(
+    'Usuario o contraseña incorrectos.',
+    ESPERA_CONTRASENA,
+  );
   await expect(page.getByRole('heading', { level: 1, name: 'Iniciar sesión' })).toBeVisible();
 });
 
 test('cerrar sesión vuelve al inicio y el token deja de servir', async ({ page, request }) => {
   await page.goto('/');
   await iniciarSesion(page, usuario(), clave());
-  await expect(page.getByRole('heading', { level: 1, name: 'Tablero de espacios' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tablero de espacios' })).toBeVisible(
+    ESPERA_CONTRASENA,
+  );
   const token = await page.evaluate(
     (claveSesion) => JSON.parse(window.sessionStorage.getItem(claveSesion)).token,
     CLAVE_SESION,
