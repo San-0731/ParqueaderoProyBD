@@ -147,6 +147,19 @@ const puedeEditar = puede('ADMINISTRADOR');
 En las pruebas de una pantalla, `test/SesionDePrueba.jsx` da la sesión de un rol sin pasar por el
 login: `<SesionDePrueba rol="OPERADOR"><Espacios /></SesionDePrueba>`.
 
+## Auditoría (`pages/auditoria/`)
+
+Solo para administrador y DBA. La llenan los triggers de la base (V008); la pantalla solo la lee.
+
+- Filtros: rango de fechas (atajos y "Desde"/"Hasta", empieza en los últimos 7 días) y sección
+  (entradas y salidas, pagos, vehículos, propietarios, espacios).
+- Cada fila dice quién (nombre, rol y usuario), qué hizo en palabras (`describirAccion`:
+  "Registró una salida", "Deshabilitó un espacio"…) y el detalle (`detalle`): al crear, los datos
+  guardados; al editar, la fila (placa o espacio) y solo lo que cambió, como "antes → después".
+- Las placas van con `<Placa>` y los tipos con `nombreTipoVisible()`, como en toda la app.
+- El administrador solo recibe los cambios de los operadores; el DBA, todos. Lo filtra el backend
+  (con dos vistas de la base), no la pantalla.
+
 ## Pestaña Sistema (`pages/sistema/`)
 
 Es la pestaña exclusiva del DBA. `Sistema.jsx` pone el título y las secciones como pestañas
