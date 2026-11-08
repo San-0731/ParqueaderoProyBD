@@ -10,13 +10,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuración de la aplicación (datos de MySQL, puerto del servidor HTTP y
- * origen permitido por CORS).
+ * Configuración de la aplicación (datos de MySQL, conexión cifrada, puerto del
+ * servidor HTTP y origen permitido por CORS).
  *
  * <p>Cada variable se busca primero en las variables de entorno del sistema
  * ({@link System#getenv(String)}). Si no existe o está vacía, se toma del
  * archivo {@code .env} de la raíz del repositorio. Así las credenciales nunca
- * se escriben en el código.
+ * se escriben en el código. En producción (el contenedor de Render) no hay
+ * archivo {@code .env}: todo llega por variables de entorno.
  *
  * <p>Uso: {@code Configuracion configuracion = Configuracion.cargar();}
  */
@@ -33,11 +34,14 @@ public final class Configuracion {
      *   <li>{@code PORT}: puerto del servidor HTTP del backend.</li>
      *   <li>{@code CORS_ORIGIN}: dirección del frontend que puede llamar a la
      *       API desde el navegador (Vite usa el puerto 5173).</li>
+     *   <li>{@code DB_SSL}: {@code true} para cifrar la conexión con MySQL (base
+     *       en la nube, como Aiven); {@code false} en local (MySQL de Docker).</li>
      * </ul>
      */
     private static final Map<String, String> VARIABLES_OPCIONALES = Map.of(
             "PORT", "8080",
-            "CORS_ORIGIN", "http://localhost:5173");
+            "CORS_ORIGIN", "http://localhost:5173",
+            "DB_SSL", "false");
 
     /**
      * Variables opcionales sin valor por defecto (si faltan, quedan en
@@ -55,6 +59,7 @@ public final class Configuracion {
     private final String dbNombre;
     private final String dbUsuario;
     private final String dbContrasena;
+    private final boolean dbSsl;
     private final int puertoServidor;
     private final String origenCors;
     private final String dbaUsuario;
@@ -68,6 +73,7 @@ public final class Configuracion {
         this.dbNombre = valores.get("DB_NAME");
         this.dbUsuario = valores.get("DB_USER");
         this.dbContrasena = valores.get("DB_PASSWORD");
+        this.dbSsl = leerBooleano("DB_SSL", valores.get("DB_SSL"));
         this.puertoServidor = leerPuerto("PORT", valores.get("PORT"));
         this.origenCors = leerOrigenCors(valores.get("CORS_ORIGIN"));
         this.dbaUsuario = valores.get("DBA_USUARIO");
@@ -238,6 +244,26 @@ public final class Configuracion {
     }
 
     /**
+     * Lee una variable de tipo sí/no. Solo acepta {@code true} o {@code false}
+     * (sin importar mayúsculas): un valor como {@code si} o {@code 1} es un
+     * error, para no apagar el cifrado por una equivocación al escribirlo.
+     *
+     * <p>Es package-private para poder probarlo sin variables de entorno.
+     *
+     * @throws IllegalStateException si el valor no es true ni false
+     */
+    static boolean leerBooleano(String nombre, String valor) {
+        if ("true".equalsIgnoreCase(valor)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(valor)) {
+            return false;
+        }
+        throw new IllegalStateException("La variable " + nombre
+                + " debe valer true o false, pero vale '" + valor + "'.");
+    }
+
+    /**
      * Valida el origen CORS. Debe ser una dirección como
      * {@code http://localhost:5173} o {@code *} (cualquier origen). Se quita la
      * barra final porque el navegador envía el origen sin ella, y con la barra
@@ -282,6 +308,14 @@ public final class Configuracion {
 
     public String getDbContrasena() {
         return dbContrasena;
+    }
+
+    /**
+     * {@code true} si la conexión con MySQL debe ir cifrada (DB_SSL=true, en
+     * producción); {@code false} en local.
+     */
+    public boolean isDbSsl() {
+        return dbSsl;
     }
 
     public int getPuertoServidor() {

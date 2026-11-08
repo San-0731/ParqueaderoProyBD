@@ -315,6 +315,7 @@ El servidor se detiene con `Ctrl+C`. Variables opcionales del `.env`:
 |---------------|-------------------------|--------------------------------------------------------|
 | `PORT`        | `8080`                  | Puerto del servidor HTTP                               |
 | `CORS_ORIGIN` | `http://localhost:5173` | Dirección del frontend que puede llamar a la API (CORS) |
+| `DB_SSL`      | `false`                 | `true` cifra la conexión con MySQL (producción, base en la nube); `false` en local |
 | `DBA_USUARIO`, `DBA_CLAVE_INICIAL` | — | Primer DBA: si no hay ninguno activo, el backend lo crea al arrancar |
 
 Para probar la API sin escribir `curl`, abre [`backend/api.http`](backend/api.http)
