@@ -188,7 +188,9 @@ public final class Router {
         Map<String, String> parametrosQuery = parsearQuery(uri.getRawQuery());
         Peticion peticion = new Peticion(metodo.toUpperCase(Locale.ROOT), rutaCruda,
                 coincidencia.parametrosRuta(), parametrosQuery, cuerpo, token, usuario);
-        return coincidencia.manejador().manejar(peticion);
+        // Mientras se atiende, el usuario queda como "usuario actual": ConexionBD
+        // se lo pasa a MySQL (@id_usuario_app) para la auditoría.
+        return UsuarioActual.ejecutarCon(usuario, coincidencia.manejador(), peticion);
     }
 
     /** Igual que {@link #despachar(String, URI, String, String)}, sin token. */

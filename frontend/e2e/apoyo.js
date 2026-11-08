@@ -169,3 +169,33 @@ export async function crearUsuarioPorApi(request, rol) {
   );
   return { nombreUsuario, clave };
 }
+
+/** Inicia sesión por la API con { nombreUsuario, clave } y devuelve el token. */
+export async function tokenPorApi(request, { nombreUsuario, clave }) {
+  const sesion = await json(
+    await request.post(`${API}/auth/login`, { data: { nombreUsuario, clave } }),
+  );
+  return sesion.token;
+}
+
+/**
+ * Crea por la API, con el token de quien lo hace, un propietario y un carro suyo. Devuelve la
+ * placa. Sirve para que el cambio quede en la auditoría a nombre de ese usuario.
+ */
+export async function registrarCarroComo(request, token) {
+  const encabezados = { Authorization: `Bearer ${token}` };
+  const cliente = await json(
+    await request.post(`${API}/clientes`, {
+      headers: encabezados,
+      data: { documento: await documentoLibre(request), nombres: 'Prueba', apellidos: 'Auditoría' },
+    }),
+  );
+  const placa = await placaLibre(request, 'Carro');
+  await json(
+    await request.post(`${API}/vehiculos`, {
+      headers: encabezados,
+      data: { identificador: placa, idCliente: cliente.idCliente },
+    }),
+  );
+  return placa;
+}

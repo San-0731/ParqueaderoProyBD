@@ -344,7 +344,7 @@ public abstract class PruebaIntegracion {
      * Borra lo que creó la prueba, en orden inverso a las llaves foráneas:
      * pagos → registros de parqueo (de sus vehículos o en sus espacios) →
      * vehículos → propietarios → espacios → zonas → modelos → marcas →
-     * sesiones → usuarios. Se ejecuta solo después de cada
+     * auditoría → sesiones → usuarios. Se ejecuta solo después de cada
      * prueba; si los datos ya se deshicieron con {@code rollback()}, los DELETE
      * no encuentran nada y no pasa nada.
      */
@@ -384,6 +384,9 @@ public abstract class PruebaIntegracion {
                 borrarPorIds(conexion, "zona", "id_zona", zonasCreadas);
                 borrarPorIds(conexion, "modelo", "id_modelo", modelosCreados);
                 borrarPorIds(conexion, "marca", "id_marca", marcasCreadas);
+                // Lo que hicieron los usuarios de prueba quedó en la auditoría (V008), que
+                // apunta al usuario: se borra antes que él.
+                borrarPorIds(conexion, "auditoria", "id_usuario", usuariosCreados);
                 borrarPorIds(conexion, "sesion", "id_usuario", usuariosCreados);
                 borrarPorIds(conexion, "usuario", "id_usuario", usuariosCreados);
                 conexion.commit();

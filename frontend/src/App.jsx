@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import Layout from './components/layout/Layout.jsx';
 import RequiereRol from './components/sesion/RequiereRol.jsx';
 import RutaProtegida from './components/sesion/RutaProtegida.jsx';
+import Auditoria from './pages/auditoria/Auditoria.jsx';
 import Entrada from './pages/entrada/Entrada.jsx';
 import Espacios from './pages/espacios/Espacios.jsx';
 import Historial from './pages/historial/Historial.jsx';
@@ -44,6 +45,17 @@ function App() {
             }
           />
           <Route path="espacios" element={<Espacios />} />
+          <Route
+            path="auditoria"
+            element={
+              <RequiereRol
+                minimo="ADMINISTRADOR"
+                mensaje="Solo los administradores y el DBA pueden ver la auditoría."
+              >
+                <Auditoria />
+              </RequiereRol>
+            }
+          />
           <Route
             path="sistema"
             element={

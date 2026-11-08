@@ -31,6 +31,8 @@ import { iniciarSesion } from './api/autenticacion.js';
 import { ErrorApi } from './api/cliente.js';
 import { listarUsuarios } from './api/usuarios.js';
 import { listarZonas } from './api/zonas.js';
+import { consultarAuditoria } from './api/auditoria.js';
+import { AUDITORIA } from './pages/auditoria/datosPrueba.js';
 import { listarVehiculos } from './api/vehiculos.js';
 import ProveedorNotificaciones from './context/ProveedorNotificaciones.jsx';
 import ProveedorSesion from './context/ProveedorSesion.jsx';
@@ -69,6 +71,7 @@ vi.mock('./api/catalogos.js', () => ({
   crearMarca: vi.fn(),
   crearModelo: vi.fn(),
 }));
+vi.mock('./api/auditoria.js', () => ({ consultarAuditoria: vi.fn() }));
 vi.mock('./api/zonas.js', () => ({
   listarZonas: vi.fn(),
   crearZona: vi.fn(),
@@ -146,6 +149,7 @@ describe('accesibilidad (axe-core)', () => {
     listarVehiculos.mockResolvedValue(VEHICULOS);
     listarClientes.mockResolvedValue(CLIENTES);
     listarUsuarios.mockResolvedValue(Object.values(USUARIOS_DE_PRUEBA));
+    consultarAuditoria.mockResolvedValue(AUDITORIA);
     listarZonas.mockResolvedValue([
       {
         idZona: 1,
@@ -312,6 +316,12 @@ describe('accesibilidad (axe-core)', () => {
     await usuario.click(screen.getByRole('button', { name: 'Nuevo modelo' }));
     const modal = screen.getByRole('dialog', { name: 'Nuevo modelo' });
     await usuario.click(within(modal).getByRole('button', { name: 'Crear modelo' }));
+    expect(await violaciones()).toEqual([]);
+  });
+
+  it('auditoría', async () => {
+    renderizarEn('/auditoria');
+    await screen.findByRole('table', { name: 'Cambios auditados' });
     expect(await violaciones()).toEqual([]);
   });
 
