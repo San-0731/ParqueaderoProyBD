@@ -34,6 +34,11 @@
   --color-deshabilitado: #5b636b;
   --color-deshabilitado-claro: #eceef0;
 
+  /* Ámbar de espera: solo el estado "Conectando con el servidor…" (Render despertando).
+     Es naranja oscuro, distinto del amarillo de la placa; contraste 6:1. */
+  --color-espera: #8a4b00;
+  --color-espera-claro: #fdf0dc;
+
   /* Entrada de avisos y modales (solo con motion-safe: respeta "reducir movimiento"). */
   --animate-aparecer: aparecer 180ms ease-out;
   @keyframes aparecer {

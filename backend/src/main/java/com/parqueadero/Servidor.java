@@ -86,6 +86,10 @@ public final class Servidor {
         if (servidorHttp != null) {
             throw new IllegalStateException("El servidor ya está iniciado.");
         }
+        // InetSocketAddress(puerto) sin dirección escucha en TODAS las interfaces
+        // de red, no solo en localhost: así el servidor responde dentro de un
+        // contenedor de Docker (Render le manda las peticiones desde afuera, al
+        // puerto de la variable PORT).
         // Backlog 0 = valor por defecto del sistema para conexiones en espera.
         HttpServer nuevo = HttpServer.create(new InetSocketAddress(puerto), 0);
         // Un solo contexto: todo lo que empiece por /api lo atiende ApiHandler.

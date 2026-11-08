@@ -8,8 +8,17 @@
 
 import { leerSesionGuardada } from './sesionGuardada.js';
 
-/** Tiempo máximo de espera de una petición, en milisegundos. */
-const TIEMPO_MAXIMO_MS = 15_000;
+/**
+ * Tiempo máximo de espera de una petición, en milisegundos: 70 s.
+ *
+ * Es largo por el "arranque en frío" del backend en producción: el plan gratuito de Render
+ * apaga el servidor tras unos minutos sin uso y tarda cerca de un minuto en encenderlo. Mientras
+ * tanto Render NO rechaza la petición: la retiene hasta que el servidor responde. Con un límite
+ * corto (antes 15 s) la app mostraba un error falso y, en un POST (registrar una entrada), el
+ * servidor podía guardarlo igual al despertar y el operador lo repetiría. Si el backend está
+ * apagado de verdad, fetch falla al instante (SIN_CONEXION), así que este límite no lo demora.
+ */
+const TIEMPO_MAXIMO_MS = 70_000;
 
 /** Funciones que quieren saber cuándo el backend rechazó la sesión (401). */
 const oyentesSesionPerdida = new Set();
@@ -87,7 +96,7 @@ async function leerJson(respuesta) {
 async function solicitar(metodo, ruta, { parametros, cuerpo } = {}) {
   const url = construirUrl(ruta, parametros);
 
-  // El AbortController cancela la petición si pasan 15 s sin terminar.
+  // El AbortController cancela la petición si pasa TIEMPO_MAXIMO_MS (70 s) sin terminar.
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_MS);
 

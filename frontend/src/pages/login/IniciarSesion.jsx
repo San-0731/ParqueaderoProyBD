@@ -1,6 +1,7 @@
 import { LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
+import IndicadorServidor from '../../components/layout/IndicadorServidor.jsx';
 import Alerta from '../../components/ui/Alerta.jsx';
 import Boton from '../../components/ui/Boton.jsx';
 import Campo from '../../components/ui/Campo.jsx';
@@ -9,6 +10,10 @@ import { useSesion } from '../../context/SesionContext.js';
 /**
  * Pantalla de inicio de sesión. Es la única fuera del Layout (sin menú). Al entrar vuelve a la
  * pantalla que se quería abrir (la recuerda RutaProtegida) o al tablero.
+ *
+ * Muestra el estado del servidor (IndicadorServidor): en producción el backend gratuito puede
+ * estar dormido, y así se ve "Conectando…" mientras despierta. Además, esa consulta empieza a
+ * despertarlo mientras la persona escribe su usuario y contraseña.
  */
 function IniciarSesion() {
   const { usuario, aviso, iniciarSesion } = useSesion();
@@ -64,6 +69,8 @@ function IniciarSesion() {
           </span>
           <span className="font-condensada text-3xl leading-none font-semibold">Parqueadero</span>
         </div>
+
+        <IndicadorServidor compacto={false} className="self-start" />
 
         <section className="rounded-xl border border-borde bg-white p-5 sm:p-6">
           <h1 className="font-condensada text-3xl leading-tight font-semibold">Iniciar sesión</h1>

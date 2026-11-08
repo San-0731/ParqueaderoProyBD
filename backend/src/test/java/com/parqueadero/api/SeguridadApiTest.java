@@ -282,7 +282,7 @@ class SeguridadApiTest extends PruebaApi {
         Configuracion sinBaseDeDatos = constructor.newInstance(Map.of(
                 "DB_HOST", "127.0.0.1", "DB_PORT", "1", "DB_NAME", "parqueadero_test",
                 "DB_USER", "usuario_prueba", "DB_PASSWORD", "clave_prueba",
-                "PORT", "8080", "CORS_ORIGIN", "http://localhost:5173"));
+                "DB_SSL", "false", "PORT", "8080", "CORS_ORIGIN", "http://localhost:5173"));
         Servidor servidorSinBase = new Servidor(sinBaseDeDatos);
         servidorSinBase.iniciar(0);
         try (HttpClient cliente = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()) {

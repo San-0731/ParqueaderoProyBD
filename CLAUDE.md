@@ -78,6 +78,10 @@ Proyecto académico de la materia Bases de Datos.
   y ./database/scripts/verificar-permisos.sh. La base de pruebas conserva ALL.
 - Las e2e inician sesión con DBA_USUARIO/DBA_CLAVE_INICIAL del .env: el backend crea ese DBA al
   arrancar, así que después de recrear la base de pruebas hay que reiniciar el backend.
+- Despliegue (Vercel + Render + Aiven; ver documentacion/despliegue.md): DB_SSL=true en
+  producción (false en local). Imagen del backend: docker build -t parqueadero-backend backend/.
+  Cargar la base vacía de producción: ./database/scripts/cargar-bd-produccion.sh
+  [--con-datos-prueba] (pide las credenciales; nunca escribirlas en archivos ni en el chat).
 
 ## Pruebas de lo nuevo (obligatorio)
 - Las pruebas se escriben junto con el código, en la misma rama, siguiendo el

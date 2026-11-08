@@ -24,10 +24,13 @@ una clase por color: `bg-senal`, `text-libre`, `border-borde`, etc. **No uses co
 | `tenue` | Texto secundario (descripciones, ayudas) |
 | `placa` | **Solo** placas (`<Placa>`) y la línea de la sección activa del menú |
 | `libre` / `ocupado` / `deshabilitado` (`-claro`) | Estados: verde, rojo y gris |
+| `espera` (`-claro`) | **Solo** el estado "Conectando con el servidor…" de `IndicadorServidor` (ámbar) |
 
 Reglas:
 - Los estados **siempre** llevan texto o ícono además del color, para quien no distingue colores.
-- El amarillo nunca se usa para estados ni advertencias, solo para placas.
+- El amarillo nunca se usa para estados ni advertencias, solo para placas. El ámbar de `espera`
+  es un naranja oscuro, distinto del amarillo de la placa, y solo marca la espera mientras el
+  servidor de producción despierta (arranque en frío de Render).
 - Todos los pares de texto y fondo tienen contraste de 4.5:1 o más.
 
 ## Tipografía
