@@ -40,6 +40,7 @@ class PermisosApiTest extends PruebaApi {
         "GET, /reportes/ingresos", "GET, /reportes/ocupacion",
         "GET, /usuarios", "POST, /usuarios", "PUT, /usuarios/1", "PUT, /usuarios/1/clave",
         "GET, /zonas", "POST, /zonas", "POST, /zonas/1/espacios", "POST, /marcas", "POST, /modelos",
+        "GET, /auditoria",
     })
     void todaRutaQueNoEsPublicaExigeSesion(String metodo, String ruta) {
         String cuerpo = "GET".equals(metodo) ? null : CUERPO;
@@ -66,6 +67,7 @@ class PermisosApiTest extends PruebaApi {
         "PUT, /clientes/1",
         "PATCH, /espacios/1/habilitado",
         "GET, /reportes/ingresos",
+        "GET, /auditoria",
     })
     void elOperadorNoEditaNiDeshabilitaNiVeLosIngresos(String metodo, String ruta) {
         String token = tokenConRol(Rol.OPERADOR);

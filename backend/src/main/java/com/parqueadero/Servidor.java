@@ -2,6 +2,7 @@ package com.parqueadero;
 
 import com.parqueadero.config.ConexionBD;
 import com.parqueadero.config.Configuracion;
+import com.parqueadero.dao.AuditoriaDAO;
 import com.parqueadero.dao.ClienteDAO;
 import com.parqueadero.dao.EspacioDAO;
 import com.parqueadero.dao.MarcaDAO;
@@ -17,6 +18,7 @@ import com.parqueadero.dao.UsuarioDAO;
 import com.parqueadero.dao.VehiculoDAO;
 import com.parqueadero.dao.ZonaDAO;
 import com.parqueadero.handler.ApiHandler;
+import com.parqueadero.handler.AuditoriaHandler;
 import com.parqueadero.handler.AutenticacionHandler;
 import com.parqueadero.handler.CatalogoHandler;
 import com.parqueadero.handler.ClienteHandler;
@@ -29,6 +31,7 @@ import com.parqueadero.handler.UsuarioHandler;
 import com.parqueadero.handler.VehiculoHandler;
 import com.parqueadero.handler.ZonaHandler;
 import com.parqueadero.model.Rol;
+import com.parqueadero.service.AuditoriaService;
 import com.parqueadero.service.AutenticacionService;
 import com.parqueadero.service.CatalogoService;
 import com.parqueadero.service.ClienteService;
@@ -146,6 +149,8 @@ public final class Servidor {
                 new ReporteService(conexionBD, new ReporteDAO()));
         ZonaHandler zonas = new ZonaHandler(
                 new ZonaService(conexionBD, new ZonaDAO(), new EspacioDAO()));
+        AuditoriaHandler auditoria = new AuditoriaHandler(
+                new AuditoriaService(conexionBD, new AuditoriaDAO()));
         UsuarioHandler usuarios = new UsuarioHandler(
                 new UsuarioService(conexionBD, new UsuarioDAO(), new SesionDAO()));
 
@@ -208,6 +213,9 @@ public final class Servidor {
                 // usa también el tablero del operador (cupos libres por tipo).
                 .get("/api/reportes/ingresos", administrador, reportes::ingresos)
                 .get("/api/reportes/ocupacion", operador, reportes::ocupacion)
+
+                // Auditoría: el administrador ve la de los operadores; el DBA, toda.
+                .get("/api/auditoria", administrador, auditoria::listar)
 
                 // Pestaña Sistema: solo el DBA administra las cuentas.
                 .get("/api/usuarios", dba, usuarios::listar)
