@@ -6,7 +6,7 @@ import { crearUsuarioPorApi, ESPERA_CONTRASENA } from './apoyo.js';
 
 async function entrarComo(page, { nombreUsuario, clave }) {
   await page.goto('/');
-  await page.getByLabel('Usuario').fill(nombreUsuario);
+  await page.getByLabel('Usuario', { exact: true }).fill(nombreUsuario);
   await page.getByLabel('Contraseña').fill(clave);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Tablero de espacios' })).toBeVisible(
@@ -78,7 +78,9 @@ test('el DBA crea un usuario en Sistema y ese usuario puede entrar', async ({ pa
   await expect(page.getByRole('cell', { name: nombreUsuario, exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
-  await page.getByLabel('Usuario').fill(nombreUsuario);
+  // Cerrar sesión avisa al backend antes de cambiar de pantalla: se espera el formulario.
+  await expect(page.getByRole('heading', { level: 1, name: 'Iniciar sesión' })).toBeVisible();
+  await page.getByLabel('Usuario', { exact: true }).fill(nombreUsuario);
   await page.getByLabel('Contraseña').fill('clave-inicial-e2e');
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await expect(page.getByText('Operador Creado En E2E')).toBeVisible(ESPERA_CONTRASENA);
