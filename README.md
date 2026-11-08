@@ -184,6 +184,8 @@ usuarios de MySQL. Los roles son jerárquicos: cada uno puede todo lo del anteri
 
 La explicación de la normalización de zonas, la auditoría con triggers y el rol de MySQL está en
 [`documentacion/guia_sustentacion_fase5.md`](documentacion/guia_sustentacion_fase5.md).
+Las tablas del inicio de sesión y cómo funciona una sesión, en
+[`documentacion/guia_login_y_sesiones.md`](documentacion/guia_login_y_sesiones.md).
 
 ## Requisitos
 
