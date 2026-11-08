@@ -79,6 +79,22 @@ Proyecto académico de la materia Bases de Datos.
 - Las e2e inician sesión con DBA_USUARIO/DBA_CLAVE_INICIAL del .env: el backend crea ese DBA al
   arrancar, así que después de recrear la base de pruebas hay que reiniciar el backend.
 
+## Pruebas de lo nuevo (obligatorio)
+- Las pruebas se escriben junto con el código, en la misma rama, siguiendo el
+  patrón de las que ya existen en esa capa:
+  - unitarias del backend (service/, util/...: sin base de datos);
+  - de API (api/, heredan de PruebaApi: servidor real e inicio de sesión);
+  - de base de datos (bd/, heredan de PruebaBaseDatos: transacción con rollback)
+    cuando se agregan o cambian tablas, restricciones, triggers o vistas;
+  - del frontend con Vitest (y la pantalla nueva en src/accesibilidad.test.jsx).
+- Si el cambio toca un flujo importante (entrada, salida o pago), actualizar su
+  prueba E2E (frontend/e2e/) y correr todas las E2E en local antes de fusionar.
+- Si hay migraciones nuevas: recrear la base de pruebas con
+  ./database/scripts/recrear-bd-pruebas.sh antes de mvn verify -Pintegracion, y
+  reiniciar el backend de pruebas antes de las E2E (crea el DBA al arrancar).
+- Una tarea no está terminada hasta que pasan mvn verify -Pintegracion,
+  npm test -- --run y npm run lint (y las E2E si se tocó un flujo importante).
+
 ## Forma de trabajar
 - Antes de cambios grandes, presentar un plan y esperar aprobación.
 - Explicar brevemente el código generado: el equipo debe entenderlo
