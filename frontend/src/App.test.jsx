@@ -38,6 +38,7 @@ vi.mock('./api/catalogos.js', () => ({
   crearMarca: pendiente(),
   crearModelo: pendiente(),
 }));
+vi.mock('./api/auditoria.js', () => ({ consultarAuditoria: pendiente() }));
 vi.mock('./api/zonas.js', () => ({
   listarZonas: pendiente(),
   crearZona: pendiente(),
@@ -154,6 +155,7 @@ describe('navegación', () => {
     ['/reportes', 'Reportes'],
     ['/espacios', 'Administración de espacios'],
     ['/sistema/usuarios', 'Sistema'],
+    ['/auditoria', 'Auditoría'],
     ['/no-existe', 'Página no encontrada'],
   ])('%s pone el título de la pestaña "%s | Parqueadero"', (ruta, nombre) => {
     renderizarEn(ruta);
@@ -261,6 +263,28 @@ describe('sesión y roles', () => {
     renderizarEn('/', rol);
 
     expect(enlaceMenu('Reportes')).toHaveAttribute('href', '/reportes');
+  });
+
+  it.each([
+    ['OPERADOR', false],
+    ['ADMINISTRADOR', true],
+    ['DBA', true],
+  ])('al %s le aparece Auditoría: %s', (rol, aparece) => {
+    renderizarEn('/', rol);
+    if (aparece) {
+      expect(enlaceMenu('Auditoría')).toHaveAttribute('href', '/auditoria');
+    } else {
+      expect(enlaceMenu('Auditoría')).not.toBeInTheDocument();
+    }
+  });
+
+  it('si el operador escribe /auditoria, ve quién puede verla', () => {
+    renderizarEn('/auditoria', 'OPERADOR');
+
+    expect(titulo('Sin permiso')).toBeInTheDocument();
+    expect(
+      screen.getByText('Solo los administradores y el DBA pueden ver la auditoría.'),
+    ).toBeInTheDocument();
   });
 
   it('solo el DBA ve la pestaña Sistema en el menú', () => {

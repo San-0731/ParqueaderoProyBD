@@ -7,6 +7,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  ScrollText,
   Settings,
   SlidersHorizontal,
   X,
@@ -37,6 +38,7 @@ const GRUPOS = [
       { ruta: '/historial', texto: 'Historial', icono: History },
       { ruta: '/reportes', texto: 'Reportes', icono: ChartColumn, rolMinimo: 'ADMINISTRADOR' },
       { ruta: '/espacios', texto: 'Espacios', icono: SlidersHorizontal },
+      { ruta: '/auditoria', texto: 'Auditoría', icono: ScrollText, rolMinimo: 'ADMINISTRADOR' },
       // La pestaña exclusiva del DBA: usuarios, zonas, espacios, marcas y modelos.
       { ruta: '/sistema', texto: 'Sistema', icono: Settings, rolMinimo: 'DBA' },
     ],

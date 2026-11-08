@@ -1,3 +1,4 @@
+import { consultarAuditoria } from './auditoria.js';
 import { cerrarSesion, consultarUsuarioActual, iniciarSesion } from './autenticacion.js';
 import * as cliente from './cliente.js';
 import { consultarIngresos, consultarOcupacion } from './reportes.js';
@@ -57,6 +58,12 @@ const casos = [
 
   ['listarUsuarios', () => listarUsuarios(), 'get', ['/usuarios']],
   ['listarZonas', () => listarZonas(), 'get', ['/zonas']],
+  [
+    'consultarAuditoria',
+    () => consultarAuditoria({ desde: '2026-11-01', tabla: 'pago' }),
+    'get',
+    ['/auditoria', { desde: '2026-11-01', hasta: undefined, tabla: 'pago' }],
+  ],
   [
     'crearZona',
     () => crearZona({ piso: '3', letra: 'D', idTipo: 1 }),
