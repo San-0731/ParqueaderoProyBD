@@ -130,6 +130,13 @@ function renderizarEn(ruta, rol = 'DBA') {
   return usuario;
 }
 
+/**
+ * Tiempo máximo de la prueba más larga (la pestaña Sistema → Usuarios: cuatro revisiones de axe
+ * con tres modales). Sola tarda unos 3,5 s, pero con toda la suite en paralelo en un equipo de
+ * 4 núcleos puede pasar de los 5 s que Vitest da por defecto y fallar sin que haya un error.
+ */
+const TIEMPO_PRUEBA_LARGA_MS = 15_000;
+
 describe('accesibilidad (axe-core)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -270,26 +277,30 @@ describe('accesibilidad (axe-core)', () => {
     expect(await violaciones()).toEqual([]);
   });
 
-  it('sistema: usuarios, con los modales de crear, editar y cambiar la contraseña', async () => {
-    const usuario = renderizarEn('/sistema/usuarios');
-    await screen.findByRole('table', { name: 'Lista de usuarios' });
-    expect(await violaciones()).toEqual([]);
+  it(
+    'sistema: usuarios, con los modales de crear, editar y cambiar la contraseña',
+    async () => {
+      const usuario = renderizarEn('/sistema/usuarios');
+      await screen.findByRole('table', { name: 'Lista de usuarios' });
+      expect(await violaciones()).toEqual([]);
 
-    await usuario.click(screen.getByRole('button', { name: 'Nuevo usuario' }));
-    const nuevo = screen.getByRole('dialog', { name: 'Nuevo usuario' });
-    await usuario.click(within(nuevo).getByRole('button', { name: 'Crear usuario' }));
-    expect(await violaciones()).toEqual([]);
-    await usuario.click(within(nuevo).getByRole('button', { name: 'Cancelar' }));
+      await usuario.click(screen.getByRole('button', { name: 'Nuevo usuario' }));
+      const nuevo = screen.getByRole('dialog', { name: 'Nuevo usuario' });
+      await usuario.click(within(nuevo).getByRole('button', { name: 'Crear usuario' }));
+      expect(await violaciones()).toEqual([]);
+      await usuario.click(within(nuevo).getByRole('button', { name: 'Cancelar' }));
 
-    await usuario.click(screen.getByRole('button', { name: 'Editar ana' }));
-    await screen.findByRole('dialog', { name: 'Editar el usuario ana' });
-    expect(await violaciones()).toEqual([]);
-    await usuario.keyboard('{Escape}');
+      await usuario.click(screen.getByRole('button', { name: 'Editar ana' }));
+      await screen.findByRole('dialog', { name: 'Editar el usuario ana' });
+      expect(await violaciones()).toEqual([]);
+      await usuario.keyboard('{Escape}');
 
-    await usuario.click(screen.getByRole('button', { name: 'Cambiar la contraseña de ana' }));
-    await screen.findByRole('dialog', { name: 'Cambiar la contraseña de ana' });
-    expect(await violaciones()).toEqual([]);
-  });
+      await usuario.click(screen.getByRole('button', { name: 'Cambiar la contraseña de ana' }));
+      await screen.findByRole('dialog', { name: 'Cambiar la contraseña de ana' });
+      expect(await violaciones()).toEqual([]);
+    },
+    TIEMPO_PRUEBA_LARGA_MS,
+  );
 
   it('sistema: zonas y espacios, con sus dos modales', async () => {
     const usuario = renderizarEn('/sistema/zonas');
