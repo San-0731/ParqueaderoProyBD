@@ -1,0 +1,18 @@
+# Archivos que NO se envían a Docker al construir la imagen (docker build).
+# Así la construcción es más rápida y nunca se copian credenciales.
+
+# Lo compilado en este computador: la imagen compila desde cero.
+target/
+
+# Archivos de los editores
+.idea/
+.vscode/
+*.iml
+
+# Variables de entorno con credenciales: en el contenedor llegan por el entorno
+.env
+.env.*
+
+# Documentación y pruebas manuales de la API: no se necesitan para compilar
+*.md
+api.http
