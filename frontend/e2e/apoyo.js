@@ -5,6 +5,13 @@ import { expect } from '@playwright/test';
 // La regla "las llamadas a la API solo salen de src/api/" es del código de la app, no de las
 // pruebas.
 
+/**
+ * Espera para lo que pasa por PBKDF2 en el backend (iniciar sesión, crear un usuario): el hash
+ * de una contraseña es lento a propósito (600.000 iteraciones) y, con tres navegadores en
+ * paralelo, puede tardar más que los 5 s por defecto de expect.
+ */
+export const ESPERA_CONTRASENA = { timeout: 20_000 };
+
 /** URL de la API (la misma que usa el frontend en .env.local). */
 export const API = process.env.E2E_API_URL ?? 'http://localhost:8080/api';
 

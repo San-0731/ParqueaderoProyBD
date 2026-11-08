@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { crearUsuarioPorApi } from './apoyo.js';
+import { crearUsuarioPorApi, ESPERA_CONTRASENA } from './apoyo.js';
 
 // Lo que ve cada rol. Usa el `test` original de Playwright (sin la sesión del DBA): cada prueba
 // crea su usuario por la API e inicia sesión por la pantalla.
@@ -9,7 +9,9 @@ async function entrarComo(page, { nombreUsuario, clave }) {
   await page.getByLabel('Usuario').fill(nombreUsuario);
   await page.getByLabel('Contraseña').fill(clave);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Tablero de espacios' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tablero de espacios' })).toBeVisible(
+    ESPERA_CONTRASENA,
+  );
 }
 
 const menu = (page) => page.getByRole('navigation', { name: 'Principal' });
@@ -70,13 +72,15 @@ test('el DBA crea un usuario en Sistema y ese usuario puede entrar', async ({ pa
   await modal.getByLabel('Contraseña inicial').fill('clave-inicial-e2e');
   await modal.getByRole('button', { name: 'Crear usuario' }).click();
 
-  await expect(page.getByText(`Usuario ${nombreUsuario} creado.`, { exact: false })).toBeVisible();
+  await expect(page.getByText(`Usuario ${nombreUsuario} creado.`, { exact: false })).toBeVisible(
+    ESPERA_CONTRASENA,
+  );
   await expect(page.getByRole('cell', { name: nombreUsuario, exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await page.getByLabel('Usuario').fill(nombreUsuario);
   await page.getByLabel('Contraseña').fill('clave-inicial-e2e');
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-  await expect(page.getByText('Operador Creado En E2E')).toBeVisible();
+  await expect(page.getByText('Operador Creado En E2E')).toBeVisible(ESPERA_CONTRASENA);
   await expect(menu(page).getByRole('link', { name: 'Reportes' })).toHaveCount(0);
 });
