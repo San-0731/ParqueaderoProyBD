@@ -9,7 +9,12 @@
 > la pantalla; las placas se muestran con un espacio (KLM234 se ve "KLM 234").
 
 Resumen: RF-01 (8) · RF-02 (6) · RF-03 (5) · RF-04 (5) · RF-05 (8) · RF-06 (6) ·
-RF-07 (11) · RNF (8) = **57 casos**.
+RF-07 (11) · RNF (8) = **57 casos**, más **16** de la Fase 5 (F5: usuarios, roles, auditoría,
+zonas y permisos de MySQL) = **73 casos**.
+
+**Desde la Fase 5 hay que iniciar sesión.** Para los casos anteriores sirve el DBA del `.env`
+(`DBA_USUARIO` y `DBA_CLAVE_INICIAL`), que puede hacer todo. Los casos F5 crean un operador y un
+administrador en el caso CP-F5-03 y los usan después.
 
 **Sobre los datos:** los casos que dan cifras exactas (cupos del tablero, cantidad de
 parqueos, totales de octubre) suponen la base **recién recreada**. Los casos de cobro van
@@ -117,3 +122,25 @@ registrar su entrada y esperar más de un minuto (el primer minuto no se cobra).
 | CP-RNF-06 | RNF | Dos operarios cobran el mismo vehículo | WZE620 dentro, con cobro | 1. Abrir su cobro en dos pestañas.<br>2. Confirmar el pago en la primera.<br>3. Confirmar en la segunda.<br>4. Ejecutar el SQL **A2** del plan. | 3: la segunda pestaña dice que el parqueo ya está cerrado.<br>4: un solo pago para ese registro. | | | |
 | CP-RNF-07 | RNF | Tildes, ñ y emojis | — | Registrar un propietario con nombres `José Ñúñez` y apellidos `Pérez Ávila`. | Se guarda y se ve igual en la ficha, el historial y los recibos. | | | |
 | CP-RNF-08 | RNF | Las pantallas cargan sin errores | Consola del navegador abierta (F12) | Abrir cada pantalla del menú y una dirección inexistente (`/xyz`). | Ninguna muestra errores en rojo en la consola. `/xyz` muestra "Página no encontrada" con el enlace **Ir al tablero**. | | | |
+
+## F5 Usuarios, roles, auditoría, zonas y permisos de MySQL (Fase 5)
+
+| ID | Requisito | Descripción | Precondiciones | Pasos | Resultado esperado | Resultado obtenido | Estado | Bug |
+|---|---|---|---|---|---|---|---|---|
+| CP-F5-01 | F5 | Sin sesión no se entra | Sesión cerrada | Abrir `/historial` directamente. | Muestra **Iniciar sesión** (sin menú). Al entrar con el DBA, vuelve a **Historial de parqueos**. | | | |
+| CP-F5-02 | F5 | Usuario o contraseña incorrectos | — | Iniciar sesión con el DBA y una contraseña equivocada; luego con un usuario que no existe. | En los dos casos: "Usuario o contraseña incorrectos." (mismo mensaje). No entra. | | | |
+| CP-F5-03 | F5 | El DBA crea un operador y un administrador | Sesión del DBA | **Sistema** → **Usuarios** → **Nuevo usuario**: `op_prueba`, "Operador Prueba", rol Operador, contraseña `clave-op-123`. Repetir con `admin_prueba`, rol Administrador. | "Usuario op_prueba creado. Entrégale su contraseña inicial." Los dos aparecen en la tabla como Activos. | | | |
+| CP-F5-04 | F5 | Lo que ve el operador | CP-F5-03 | Cerrar sesión y entrar como `op_prueba`. Recorrer el menú y abrir `/reportes` y `/sistema` escribiendo la dirección. | El menú no tiene **Reportes**, **Auditoría** ni **Sistema**. `/reportes`: "Solo los administradores pueden ver los reportes." `/sistema`: "Solo el DBA puede administrar el sistema." | | | |
+| CP-F5-05 | F5 | El operador registra pero no edita | Sesión de `op_prueba` | 1. Registrar la entrada de una placa nueva con un propietario nuevo.<br>2. **Vehículos** → abrir esa placa. | 1: se registra normalmente.<br>2: la ficha no tiene **Editar vehículo** ni **Editar propietario**. | | | |
+| CP-F5-06 | F5 | Espacios en solo lectura para el operador | Sesión de `op_prueba` | **Espacios**. | Aviso "Solo los administradores pueden habilitar o deshabilitar espacios." Los interruptores se ven desactivados y no hacen nada. | | | |
+| CP-F5-07 | F5 | Lo que ve el administrador | Sesión de `admin_prueba` | Recorrer el menú; deshabilitar y volver a habilitar un espacio libre. | Tiene **Reportes** y **Auditoría**, pero no **Sistema**. Los interruptores de Espacios funcionan. | | | |
+| CP-F5-08 | F5 | Desactivar un usuario corta su sesión | `op_prueba` con sesión abierta en otra ventana | Como DBA: **Sistema** → **Editar op_prueba** → apagar "Puede iniciar sesión" → **Guardar cambios**. En la otra ventana, cambiar de pantalla. | La otra ventana vuelve a **Iniciar sesión** con "Tu sesión terminó. Inicia sesión de nuevo." `op_prueba` ya no puede entrar. Reactivarlo al terminar. | | | |
+| CP-F5-09 | F5 | Siempre queda un DBA activo | Solo un DBA activo | Como DBA: **Editar** tu propio usuario → cambiar el rol a Administrador → **Guardar cambios**. | El modal avisa que se cerraría tu sesión y el backend responde "Debe quedar al menos un DBA activo…". No cambia nada. | | | |
+| CP-F5-10 | F5 | Cambiar la contraseña de un usuario | CP-F5-03 | Como DBA: **Contraseña** de `op_prueba` → `clave-nueva-123`. Entrar como `op_prueba` con la vieja y con la nueva. | Con la vieja: "Usuario o contraseña incorrectos." Con la nueva: entra. | | | |
+| CP-F5-11 | F5 | Crear una zona en un piso nuevo | Sesión del DBA | **Sistema** → **Zonas y espacios** → **Nueva zona**: piso `3`, letra `d`, tipo Moto. | Aviso previo: "Se creará la zona D3… El piso 3 todavía no existe". Luego "Zona D3 creada: es la primera del piso 3." La zona aparece con "Sin espacios". | | | |
+| CP-F5-12 | F5 | Agregar espacios a una zona | CP-F5-11 | **Agregar espacios a la zona D3** → cantidad 4. Ir al **Tablero**. | Vista previa "D3-01 a D3-04". En el tablero aparecen **Piso 3** y **Zona D3** con 4 espacios libres para motos. | | | |
+| CP-F5-13 | F5 | Zona repetida y límite de 99 | CP-F5-11 | 1. Crear otra vez la zona D en el piso 3.<br>2. En la zona A1, pedir 92 espacios. | 1: "Ya existe una zona con esa letra en ese piso."<br>2: "A esta zona solo le caben 91 espacios más…" y no se envía. | | | |
+| CP-F5-14 | F5 | Marcas y modelos | Sesión del DBA | **Sistema** → **Marcas y modelos**: crear la marca `Kia`, luego el modelo `Picanto` de Kia. Crear otra vez `kia`. Después registrar un vehículo y elegir Kia Picanto. | Se crean y aparecen en la tabla. `kia`: "Ya existe una marca llamada 'kia'." Kia Picanto aparece en el registro de vehículos. | | | |
+| CP-F5-15 | F5 | Auditoría: el administrador ve a los operadores | Haber hecho CP-F5-05 (operador) y CP-F5-07 (administrador) | Entrar como `admin_prueba` → **Auditoría** → rango "Hoy". Luego como DBA. | El administrador ve "Registró un propietario", "Registró un vehículo" y "Registró una entrada" de Operador Prueba, pero **no** sus propios cambios de espacios. El DBA ve también "Deshabilitó un espacio" de Administrador Prueba. Nada de lo que hizo el DBA aparece. | | | |
+| CP-F5-16 | F5 | Permisos de MySQL del usuario de la aplicación | V009 y `aplicar-permisos.sh` aplicados | 1. `./database/scripts/verificar-permisos.sh`.<br>2. Conectarse a MySQL como `parqueadero_user` y ejecutar `DELETE FROM pago;`. | 1: "Todo como se esperaba." (17 comprobaciones).<br>2: `ERROR 1142 (42000): DELETE command denied to user 'parqueadero_user'`. No se borra nada. | | | |
+

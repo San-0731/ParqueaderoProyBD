@@ -62,7 +62,7 @@ arriba, pocas pruebas grandes y lentas que recorren todo el sistema.
                 ╱ ╲
                ╱   ╲        Manuales: 57 casos (equipo de testing)
               ╱─────╲
-             ╱  E2E  ╲      13 pruebas con Playwright (navegador real)
+             ╱  E2E  ╲      22 pruebas con Playwright (navegador real)
             ╱─────────╲
            ╱ Integración╲   115 pruebas JUnit contra MySQL real (BD, API, seguridad)
           ╱─────────────╲
@@ -86,19 +86,20 @@ arriba, pocas pruebas grandes y lentas que recorren todo el sistema.
 
 | Nivel | Herramienta | Dónde está el código | Cantidad | ¿Corre en GitHub? |
 |---|---|---|---|---|
-| Unitarias del backend | JUnit 6 | `backend/src/test/java/com/parqueadero/{service,util}/` | 157 | ✅ Sí |
-| Integración: reglas de la base | JUnit + JDBC | `backend/src/test/java/com/parqueadero/bd/` | 42 | ✅ Sí |
-| Integración: API | JUnit + `java.net.http.HttpClient` | `backend/src/test/java/com/parqueadero/api/` | 33 | ✅ Sí |
+| Unitarias del backend | JUnit 6 | `backend/src/test/java/com/parqueadero/{service,util,handler,model}/` y `ServidorRutasTest` | 254 | ✅ Sí |
+| Integración: reglas de la base | JUnit + JDBC | `backend/src/test/java/com/parqueadero/bd/` | 95 | ✅ Sí |
+| Integración: API | JUnit + `java.net.http.HttpClient` | `backend/src/test/java/com/parqueadero/api/` | 158 | ✅ Sí |
 | Integración: seguridad | JUnit + `HttpClient` | `backend/src/test/java/com/parqueadero/api/SeguridadApiTest.java` | 33 | ✅ Sí |
-| Integración: entorno | JUnit | `backend/src/test/java/com/parqueadero/integracion/` | 7 | ✅ Sí |
-| Frontend (pantallas, funciones, accesibilidad) | Vitest + Testing Library + axe-core | `frontend/src/**/*.test.{js,jsx}` | 411 | ✅ Sí |
+| Integración: entorno | JUnit | `backend/src/test/java/com/parqueadero/integracion/` | 11 | ✅ Sí |
+| Permisos del rol de MySQL | Script de terminal | `database/scripts/verificar-permisos.sh` | 17 comprobaciones | ✅ Sí |
+| Frontend (pantallas, funciones, accesibilidad) | Vitest + Testing Library + axe-core | `frontend/src/**/*.test.{js,jsx}` | 518 | ✅ Sí |
 | Lint del frontend | ESLint | `frontend/eslint.config.js` | — | ✅ Sí |
 | Compilación del frontend | Vite | — | — | ✅ Sí |
-| Extremo a extremo | Playwright (Chromium) | `frontend/e2e/` | 13 | ❌ No (solo en local, sección 16) |
-| Manuales | Guion de casos | `documentacion/pruebas/` | 57 casos | ❌ No (las hace una persona) |
+| Extremo a extremo | Playwright (Chromium) | `frontend/e2e/` | 22 | ❌ No (solo en local, sección 16) |
+| Manuales | Guion de casos | `documentacion/pruebas/` | 57 casos + los de la Fase 5 | ❌ No (las hace una persona) |
 
-Totales: **272** pruebas JUnit (157 unitarias + 115 de integración), **411** de Vitest y
-**13** E2E.
+Totales: **551** pruebas JUnit (254 unitarias + 297 de integración), **518** de Vitest y
+**22** E2E.
 
 ### ¿Qué revisa cada grupo de integración?
 
@@ -112,6 +113,13 @@ Totales: **272** pruebas JUnit (157 unitarias + 115 de integración), **411** de
 | `api/ReglasApiTest` | Los errores del negocio llegan como 409 o 400 con un mensaje claro. |
 | `api/ConcurrenciaApiTest` | 10 cobros simultáneos del mismo vehículo dejan **un solo pago** (`SELECT ... FOR UPDATE`). |
 | `api/SeguridadApiTest` | Inyección SQL, textos larguísimos, emojis, cuerpos raros y errores sin detalles internos. |
+| `bd/ZonasTest` | La tabla `zona` (V006): misma letra en pisos distintos sí, en el mismo piso no; formatos de piso, letra y número. |
+| `bd/UsuariosTest` | Roles, usuarios y sesiones (V007): nombre de usuario único y con formato, solo el hash del token. |
+| `bd/AuditoriaTest` | Los triggers de auditoría (V008): operador y administrador quedan registrados, el DBA y los cambios fuera de la app no; el rol es una foto; un rollback no deja filas. |
+| `api/AutenticacionApiTest` | Inicio y cierre de sesión: token de 43 caracteres, mismo mensaje para usuario inexistente o clave mala, sesión vencida o usuario desactivado → 401. |
+| `api/PermisosApiTest` | Cada ruta sin sesión → 401 y con un rol que no alcanza → 403; el operador sí puede trabajar. |
+| `api/UsuariosApiTest`, `ZonasApiTest`, `MarcasModelosApiTest`, `AuditoriaApiTest` | La pestaña Sistema y la auditoría de punta a punta (por ejemplo, siempre queda un DBA activo; los espacios siguen la numeración hasta el 99). |
+| `ServidorRutasTest` (unitaria) | Solo `/salud` y `/auth/login` son públicas: una ruta nueva sin rol hace fallar el build. |
 
 El detalle de qué prueba cubre cada parte del enunciado está en
 [`pruebas/matriz-trazabilidad.md`](pruebas/matriz-trazabilidad.md).
@@ -452,10 +460,23 @@ se conecta con el cliente `mysql` a `DB_HOST:DB_PORT`. Hace esto:
 2. Aplica **todas** las migraciones `database/migrations/V*.sql` en orden (tablas, catálogos,
    datos de prueba, vistas y triggers). Si una falla, se detiene y dice cuál.
 3. Da permisos a `parqueadero_user` sobre `parqueadero_test`.
-4. Imprime el resumen: "parqueadero_test tiene 10 tablas, 4 vistas y 4 triggers".
+4. Imprime el resumen: "parqueadero_test tiene 15 tablas, 6 vistas y 12 triggers".
 
-Esto también **prueba las migraciones**: si alguien agrega una `V006__...sql` con un error,
+Esto también **prueba las migraciones**: si alguien agrega una `V010__...sql` con un error,
 el CI falla en este paso.
+
+#### Paso 4.1: verificar los permisos del rol de la aplicación
+
+```yaml
+      - name: Verificar los permisos del rol de la aplicación
+        env:
+          MODO_MYSQL: directo
+        run: ./database/scripts/verificar-permisos.sh
+```
+
+Crea un usuario temporal que solo tiene `rol_aplicacion` (V009) y comprueba que lo que el
+backend necesita funcione y lo demás responda `ERROR 1142` o `1143` (por ejemplo, borrar pagos,
+escribir en la auditoría o `DROP TABLE`). Al final borra el usuario.
 
 #### Paso 5: las pruebas del backend
 
@@ -467,7 +488,7 @@ el CI falla en este paso.
 
 - `working-directory: backend`: ejecuta el comando dentro de la carpeta `backend/`.
 - `-B` (*batch mode*): salida sin colores ni barras de progreso, más fácil de leer en el log.
-- `verify -Pintegracion`: compila y ejecuta las **272** pruebas (unitarias, base de datos,
+- `verify -Pintegracion`: compila y ejecuta las **551** pruebas (unitarias, base de datos,
   API y seguridad). En la API, cada clase de prueba levanta el servidor completo en un
   puerto libre de la máquina del job y le hace peticiones HTTP reales.
 

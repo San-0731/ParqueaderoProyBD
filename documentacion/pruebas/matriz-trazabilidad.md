@@ -39,6 +39,18 @@ Dónde están las pruebas automáticas:
 | Formas de pago: **efectivo** | RF-07 | CP-RF07-04, CP-RF07-11 | `api/FlujoParqueoApiTest` [Efectivo] · `bd/RestriccionesTest` (varios pagos en efectivo sin referencia) · `api/ConcurrenciaApiTest` | `src/pages/salida/Liquidacion.test.jsx` (salida sin cobro) · `e2e/pago-efectivo.spec.js` |
 | Pagos: recibo y reportes de ingresos | RF-07 | CP-RF07-07 a 10 | `bd/VistasTest` (ingresos por día y método) · `bd/RestriccionesTest` (monto positivo, tarifa positiva) · `service/ReporteServiceTest` · `api/FlujoParqueoApiTest` (el ingreso aparece en el reporte) | `src/pages/reportes/Reportes.test.jsx` · `src/pages/reportes/datosReportes.test.js` · `src/pages/salida/Liquidacion.test.jsx` (recibo) · `e2e/flujo-completo.spec.js` (recibo) |
 
+### Fase 5: usuarios, roles, auditoría y estructura
+
+| Funcionalidad | Casos manuales | Pruebas automáticas: base de datos y backend | Pruebas automáticas: frontend y E2E |
+|---|---|---|---|
+| Inicio y cierre de sesión | CP-F5-01, CP-F5-02, CP-F5-08 | `bd/UsuariosTest` · `api/AutenticacionApiTest` · `integracion/DbaInicialTest` · `util/ContrasenasTest` · `util/TokensTest` · `handler/ApiHandlerTest` | `src/App.test.jsx` (sesión y roles) · `src/context/ProveedorSesion.test.jsx` · `src/api/cliente.test.js` (token y 401) · `e2e/sesion.spec.js` |
+| Permisos por rol (menú, pantallas y API) | CP-F5-04 a 07 | `api/PermisosApiTest` · `util/RouterTest` · `model/RolTest` · `ServidorRutasTest` | `src/App.test.jsx` · `src/pages/espacios/Espacios.test.jsx` · `src/pages/vehiculos/Vehiculos.test.jsx` · `src/utils/roles.test.js` · `e2e/roles.spec.js` |
+| Administración de usuarios (DBA) | CP-F5-03, CP-F5-08 a 10 | `api/UsuariosApiTest` (último DBA, sesiones cerradas al cambiar rol o clave) · `service/UsuarioServiceTest` | `src/pages/sistema/usuarios/Usuarios.test.jsx` · `e2e/roles.spec.js` |
+| Zonas, pisos y espacios (V006) | CP-F5-11 a 13 | `bd/ZonasTest` · `api/ZonasApiTest` · `service/ZonaServiceTest` | `src/pages/sistema/zonas/*.test.*` · `src/utils/espacio.test.js` (A1-01) · `e2e/sistema.spec.js` |
+| Marcas y modelos (DBA) | CP-F5-14 | `api/MarcasModelosApiTest` | `src/pages/sistema/marcas/MarcasModelos.test.jsx` · `e2e/sistema.spec.js` |
+| Auditoría con triggers (V008) | CP-F5-15 | `bd/AuditoriaTest` (quién se audita, JSON, rol como foto, rollback) · `api/AuditoriaApiTest` (qué ve cada rol) | `src/pages/auditoria/*.test.*` · `e2e/auditoria.spec.js` |
+| Rol de MySQL de mínimo privilegio (V009) | CP-F5-16 | `database/scripts/verificar-permisos.sh` (17 comprobaciones, en el CI) | Las 22 E2E también pasaron con un usuario que solo tiene el rol (Fase 5, Paso H) |
+
 ## 2. Requisitos no funcionales
 
 | Requisito | Casos manuales | Pruebas automáticas |
