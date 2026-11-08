@@ -44,9 +44,11 @@ public final class UsuarioDAO {
     // FOR UPDATE bloquea las filas de los DBA activos hasta el commit: si dos
     // DBA intentan desactivarse el uno al otro al mismo tiempo, el segundo
     // espera aquí y, al continuar, ya ve que solo queda uno (y se rechaza).
+    // "OF u" bloquea solo las filas de usuario, no las de rol (que no cambian y
+    // que el rol de MySQL de la aplicación solo puede leer, V009).
     private static final String SQL_IDS_DBA_ACTIVOS_PARA_ACTUALIZAR =
             "SELECT u.id_usuario FROM usuario u JOIN rol r ON r.id_rol = u.id_rol"
-                    + " WHERE r.nombre = 'DBA' AND u.activo = TRUE FOR UPDATE";
+                    + " WHERE r.nombre = 'DBA' AND u.activo = TRUE FOR UPDATE OF u";
 
     private static final String SQL_ACTUALIZAR =
             "UPDATE usuario SET nombre_completo = ?,"
